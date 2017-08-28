@@ -2,12 +2,12 @@ name:                shoot
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/githubuser/shoot#readme
+homepage:            https://github.com/felixgb/shoot#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Felix Bowman
-maintainer:          example@example.com
-copyright:           2017 Author name here
+maintainer:          felixgbowman@gmail.com
+copyright:           2017 Felix Bowman
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
@@ -15,7 +15,9 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Render3, Util.Common, Util.Shaders
+  exposed-modules:     Render3
+                     , Util.Common
+                     , Util.Shaders
   build-depends:       base >= 4.7 && < 5
                      , mtl
                      , bytestring
@@ -46,4 +48,4 @@ test-suite shoot-test
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/shoot
+  location: https://github.com/felixgb/shoot
