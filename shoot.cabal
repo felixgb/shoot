@@ -18,6 +18,7 @@ library
   exposed-modules:     Render3
                      , Util.Common
                      , Util.Shaders
+                     , Util.Model
   build-depends:       base >= 4.7 && < 5
                      , mtl
                      , bytestring
