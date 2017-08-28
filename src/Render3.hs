@@ -3,9 +3,10 @@ module Render3 where
 import Control.Monad.Reader
 import Control.Monad (when, unless, forever)
 import Control.Exception
-import System.Exit
+import qualified Data.Map as Map
 import Foreign
 import Foreign.C.String (CString, newCAStringLen, newCString)
+import System.Exit
 
 import qualified Graphics.UI.GLFW as GLFW
 import Graphics.GL.Core33
@@ -39,6 +40,8 @@ initWindow = do
     Just window -> return window
     Nothing     -> throwIO U.WindowCreationError
 
+type ModelData = Map.Map GLuint (V3 GLfloat)
+
 data RenderData = RenderData
   { _models          :: [U.VaoModel]
   , _shaderProgram   :: GLuint
@@ -49,6 +52,7 @@ data RenderData = RenderData
   , _projection      :: CString
   , _projP           :: Ptr (V4 (V4 GLfloat))
   , _projM           :: M44 GLfloat
+  , _positions       :: ModelData
   }
 
 colors = [
@@ -86,7 +90,6 @@ setupWindow window = do
   GLFW.makeContextCurrent (Just window)
   glViewport 0 0 (fromIntegral x) (fromIntegral y)
 
-
 setupData :: IO RenderData
 setupData = do
   shaderProgram <- U.initShaders
@@ -104,6 +107,7 @@ setupData = do
   let screenWidth = fromIntegral winWidth :: GLfloat
   let screenHeight = fromIntegral winHeight :: GLfloat
   let projM  = perspective 45 (screenWidth / screenHeight) 0.1 100.0
+  let positions = Map.fromList $ map (\((U.VaoModel id _), p) -> (id, p)) $ zip [vao1, vao2] [V3 0 0 0, V3 1 0 0]
   return $ RenderData
     { _models          = [vao1, vao2]
     , _shaderProgram   = shaderProgram
@@ -114,6 +118,7 @@ setupData = do
     , _projection      = projection
     , _projP           = projP
     , _projM           = projM
+    , _positions       = positions
     }
 
 terminate :: IO ()
@@ -135,17 +140,18 @@ displayLoop window renderData = forever $ do
   viewLoc <- glGetUniformLocation shaderProgram (_view renderData)
   projLoc <- glGetUniformLocation shaderProgram (_projection renderData)
 
-  let modelM = mkTransformation (axisAngle (V3 (0.5 :: GLfloat) 0 0) timeValue) (V3 0 0 0)
   let viewM = mkTransformation (axisAngle (V3 (0 :: GLfloat) 0 1) 0) (V3 0 0 (-3))
   let projM = _projM renderData
-  poke (_modelP renderData) (transpose modelM)
   poke (_viewP renderData) (transpose viewM)
   poke (_projP renderData) (transpose projM)
-  glUniformMatrix4fv modelLoc 1 GL_FALSE (castPtr $ _modelP renderData)
   glUniformMatrix4fv viewLoc 1 GL_FALSE (castPtr $ _viewP renderData)
   glUniformMatrix4fv projLoc 1 GL_FALSE (castPtr $ _projP renderData)
 
   forM_ (_models renderData) $ \(U.VaoModel id numVertices) -> do
+    let position = (_positions renderData) Map.! id
+    let modelM = mkTransformation (axisAngle (V3 (0.5 :: GLfloat) 0 0) timeValue) position
+    poke (_modelP renderData) (transpose modelM)
+    glUniformMatrix4fv modelLoc 1 GL_FALSE (castPtr $ _modelP renderData)
     glBindVertexArray id
     glDrawElements GL_TRIANGLES numVertices GL_UNSIGNED_INT nullPtr
     glBindVertexArray 0
