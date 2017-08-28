@@ -42,8 +42,13 @@ initWindow = do
 data RenderData = RenderData
   { _models          :: [U.VaoModel]
   , _shaderProgram   :: GLuint
-  , _transformString :: CString
-  , _transP          :: Ptr (V4 (V4 GLfloat))
+  , _model           :: CString
+  , _modelP          :: Ptr (V4 (V4 GLfloat))
+  , _view            :: CString
+  , _viewP           :: Ptr (V4 (V4 GLfloat))
+  , _projection      :: CString
+  , _projP           :: Ptr (V4 (V4 GLfloat))
+  , _projM           :: M44 GLfloat
   }
 
 colors = [
@@ -61,6 +66,14 @@ verticies = [
     -0.5 , 0.5  , 0.0   -- Top Left
   ] :: [GLfloat]
 
+verticies2 = [
+    -- positions
+    0.2  , 0.2  , 0.0 , -- Top Right
+    0.2  , -0.2 , 0.0 , -- Bottom Right
+    -0.2 , -0.2 , 0.0 , -- Bottom Left
+    -0.2 , 0.2  , 0.0   -- Top Left
+  ] :: [GLfloat]
+
 indices = [  -- Note that we start from 0!
   0, 1, 3, -- First Triangle
   1, 2, 3  -- Second Triangle
@@ -68,9 +81,9 @@ indices = [  -- Note that we start from 0!
 
 setupWindow :: GLFW.Window -> IO ()
 setupWindow window = do
+  (x, y) <- GLFW.getFramebufferSize window
   GLFW.setKeyCallback window (Just keyCallback)
   GLFW.makeContextCurrent (Just window)
-  (x, y) <- GLFW.getFramebufferSize window
   glViewport 0 0 (fromIntegral x) (fromIntegral y)
 
 
@@ -80,10 +93,28 @@ setupData = do
     [ (GL_VERTEX_SHADER, "src/glsl/vertex.shader")
     , (GL_FRAGMENT_SHADER, "src/glsl/fragment.shader")
     ]
-  model     <- U.loadToVao $ U.Object verticies colors indices
-  transform <- newCString "transform"
-  transP    <- malloc
-  return $ RenderData [model] shaderProgram transform transP
+  vao1       <- U.loadToVao $ U.Object verticies colors indices
+  vao2       <- U.loadToVao $ U.Object verticies2 colors indices
+  model      <- newCString "model"
+  modelP     <- malloc
+  view       <- newCString "view"
+  viewP      <- malloc
+  projection <- newCString "projection"
+  projP      <- malloc
+  let screenWidth = fromIntegral winWidth :: GLfloat
+  let screenHeight = fromIntegral winHeight :: GLfloat
+  let projM  = perspective 45 (screenWidth / screenHeight) 0.1 100.0
+  return $ RenderData
+    { _models          = [vao1, vao2]
+    , _shaderProgram   = shaderProgram
+    , _model           = model
+    , _modelP          = modelP
+    , _view            = view
+    , _viewP           = viewP
+    , _projection      = projection
+    , _projP           = projP
+    , _projM           = projM
+    }
 
 terminate :: IO ()
 terminate = GLFW.terminate >> exitSuccess
@@ -94,19 +125,25 @@ displayLoop window renderData = forever $ do
   unless shouldContinue terminate
 
   GLFW.pollEvents
+  timeValue <- maybe 0 realToFrac <$> GLFW.getTime
   glClearColor 0.2 0.3 0.3 1.0
   glClear GL_COLOR_BUFFER_BIT
 
-  timeValue <- maybe 0 realToFrac <$> GLFW.getTime
-  let rotQ = axisAngle (V3 (0 :: GLfloat) 0 1) timeValue
-  let rotM33 = fromQuaternion rotQ
-  let rotM33' = rotM33 !!* 0.5
-  let transformationMatrix = mkTransformationMat rotM33' (V3 0.0 (-0.0) 0)
-  poke (_transP renderData) (transpose transformationMatrix)
-  transformLoc <- glGetUniformLocation (_shaderProgram renderData) (_transformString renderData)
-  glUniformMatrix4fv transformLoc 1 GL_FALSE (castPtr (_transP renderData))
+  -- assign uniforms
+  let shaderProgram = _shaderProgram renderData
+  modelLoc <- glGetUniformLocation shaderProgram (_model renderData)
+  viewLoc <- glGetUniformLocation shaderProgram (_view renderData)
+  projLoc <- glGetUniformLocation shaderProgram (_projection renderData)
 
-  glUseProgram (_shaderProgram renderData)
+  let modelM = mkTransformation (axisAngle (V3 (0.5 :: GLfloat) 0 0) timeValue) (V3 0 0 0)
+  let viewM = mkTransformation (axisAngle (V3 (0 :: GLfloat) 0 1) 0) (V3 0 0 (-3))
+  let projM = _projM renderData
+  poke (_modelP renderData) (transpose modelM)
+  poke (_viewP renderData) (transpose viewM)
+  poke (_projP renderData) (transpose projM)
+  glUniformMatrix4fv modelLoc 1 GL_FALSE (castPtr $ _modelP renderData)
+  glUniformMatrix4fv viewLoc 1 GL_FALSE (castPtr $ _viewP renderData)
+  glUniformMatrix4fv projLoc 1 GL_FALSE (castPtr $ _projP renderData)
 
   forM_ (_models renderData) $ \(U.VaoModel id numVertices) -> do
     glBindVertexArray id

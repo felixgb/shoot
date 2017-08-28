@@ -58,7 +58,7 @@ linkShaders shaders = do
   linkSuccess <- peek linkSuccessP
   case linkSuccess of
     0 -> handleError (glGetProgramInfoLog shaderProgram) U.ProgramLinkError
-    _ -> mapM_ glDeleteShader shaders >> return shaderProgram
+    _ -> mapM_ glDeleteShader shaders >> glUseProgram shaderProgram >> return shaderProgram
 
 initShaders :: [(GLenum, FilePath)] -> IO GLuint
 initShaders shaders = do
