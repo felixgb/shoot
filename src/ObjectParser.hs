@@ -36,3 +36,4 @@ parseFace (TkF : ts) = parseIndex ts >>= parseIndex >>= parseIndex
 
 parseIndex :: [Token] -> ObjectState [Token]
 parseIndex (TkInt i : _ : _ : _ : _ : ts) = modify (insertIndex [i]) >> return ts
+parseIndex (TkInt i  : TkInt i2 : TkInt i3 : ts) = modify (insertIndex [i, i2, i3]) >> return ts

@@ -6,6 +6,7 @@ import Control.Monad (when, unless, forever)
 import Control.Exception
 import Data.IORef
 import Data.Set (Set)
+import Data.Bits ((.|.))
 import qualified Data.Set as Set
 import Foreign hiding (rotate)
 import Foreign.C.String
@@ -45,6 +46,7 @@ setupWindow :: GLFW.Window -> KeysRef -> MouseRef -> IO ()
 setupWindow window keyRef mouseRef = do
   GLFW.setCursorInputMode window GLFW.CursorInputMode'Disabled
   (x, y) <- GLFW.getFramebufferSize window
+  glEnable GL_DEPTH_TEST
   GLFW.setKeyCallback window (Just $ keyCallback keyRef)
   GLFW.setCursorPosCallback window (Just $ mouseCallback mouseRef)
   GLFW.makeContextCurrent (Just window)
@@ -72,7 +74,9 @@ setupData keyRef mouseRef = do
     , (GL_FRAGMENT_SHADER, "src/glsl/fragment.shader")
     ]
   cube       <- parseObjectFromFile "resources/cube.obj"
-  vao1       <- U.loadToVao cube
+  teapot     <- parseObjectFromFile "resources/teapot.obj"
+  -- dragon     <- parseObjectFromFile "resources/dragon.obj"
+  vao1       <- U.loadToVao teapot
   vao2       <- U.loadToVao cube
   model      <- getUniformLocation "model" shaderProgram
   view       <- getUniformLocation "view" shaderProgram
@@ -100,7 +104,7 @@ setupData keyRef mouseRef = do
 transformEntities :: GLfloat -> [Entity] -> [Entity]
 transformEntities delta [e1, e2] = [r1, r2]
   where
-    r1 = rotate (delta * 10) (V3 0 1 0) e1
+    r1 = rotate (delta * 3) (V3 0 1 0) e1
     r2 = rotate delta (V3 1 0 0) e2
 
 applyUniform :: M44 GLfloat -> GLint -> (Ptr (V4 (V4 GLfloat))) -> IO ()
@@ -114,7 +118,9 @@ render rd (Entity (U.VaoModel id numVertices) pos rot scale) = do
   applyUniform modelM (_modelLoc rd) (_modelP rd)
   glBindVertexArray id
   glDrawElements GL_TRIANGLES numVertices GL_UNSIGNED_INT nullPtr
+  glEnableVertexAttribArray 0
   glBindVertexArray 0
+  glDisableVertexAttribArray 1
 
 displayLoop :: GLFW.Window -> RenderData -> [Entity] -> IO ()
 displayLoop window renderData entities = iterateM_ loop (0.0, initCamera)
@@ -125,7 +131,7 @@ displayLoop window renderData entities = iterateM_ loop (0.0, initCamera)
 
       GLFW.pollEvents
       glClearColor 0.2 0.3 0.3 1.0
-      glClear GL_COLOR_BUFFER_BIT
+      glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
 
       t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
       let deltaTime = t - lastTime
