@@ -10,7 +10,7 @@ data Object = Object
   { vertices :: [GLfloat]
   , colors   :: [GLfloat]
   , indices  :: [GLuint]
-  }
+  } deriving (Show)
 
 data VaoModel = VaoModel
   { _vaoID       :: GLuint
@@ -28,7 +28,7 @@ data VaoModel = VaoModel
 -- can use the id of a VAO to render an object
 loadToVao :: Object -> IO VaoModel
 loadToVao (Object vs cs is) = do
-  verticesP <- newArray interwoven
+  verticesP <- newArray vs
   indicesP <- newArray is
 
   -- setup vertex array object
@@ -59,12 +59,12 @@ loadToVao (Object vs cs is) = do
   -- position attribute is in 0
   -- 6 is the number from the start of a vertex to the start of the next
   -- vertex, eg x y z r g b x
-  glVertexAttribPointer 0 3 GL_FLOAT GL_FALSE (6 * floatSize) nullPtr
+  glVertexAttribPointer 0 3 GL_FLOAT GL_FALSE (3 * floatSize) nullPtr
   glEnableVertexAttribArray 0
 
   -- color attribute is in 1
-  glVertexAttribPointer 1 3 GL_FLOAT GL_FALSE (6 * floatSize) threeFloatOffset
-  glEnableVertexAttribArray 1
+  -- glVertexAttribPointer 1 3 GL_FLOAT GL_FALSE (6 * floatSize) threeFloatOffset
+  -- glEnableVertexAttribArray 1
 
   -- unbind this VAO
   glBindVertexArray 0
@@ -73,7 +73,7 @@ loadToVao (Object vs cs is) = do
     floatSize        = (fromIntegral $ sizeOf (0.0 :: GLfloat)) :: GLsizei
     -- three float offset because colors start after x y z
     threeFloatOffset = castPtr $ plusPtr nullPtr (fromIntegral $ 3 * floatSize)
-    verticesSize     = fromIntegral $ sizeOf (0.0 :: GLfloat) * (length interwoven)
+    verticesSize     = fromIntegral $ sizeOf (0.0 :: GLfloat) * (length vs)
     indicesSize      = fromIntegral $ sizeOf (0 :: GLuint) * (length is)
     interwoven       = interweave vs cs
 

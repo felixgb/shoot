@@ -17,6 +17,7 @@ import qualified Util.Common as U
 import qualified Util.Shaders as U
 import qualified Util.Model as U
 import qualified Entity as E
+import ObjectParser (parseObjectFromFile)
 
 winWidth = 800
 winHeight = 600
@@ -95,21 +96,23 @@ setupData = do
     [ (GL_VERTEX_SHADER, "src/glsl/vertex.shader")
     , (GL_FRAGMENT_SHADER, "src/glsl/fragment.shader")
     ]
-  vao1       <- U.loadToVao $ U.Object verticies colors indices
-  vao2       <- U.loadToVao $ U.Object verticies2 colors indices
+  cube       <- parseObjectFromFile "resources/cube.obj"
+  vao1       <- U.loadToVao cube
+  vao2       <- U.loadToVao cube
   model      <- getUniformLocation "model" shaderProgram
   view       <- getUniformLocation "view" shaderProgram
   projection <- getUniformLocation "projection" shaderProgram
   projP      <- malloc
   modelP     <- malloc
   viewP      <- malloc
-  let e1     = E.Entity vao1 (V3 1 0 0) (axisAngle (V3 0 0 0) 0) 1
-  let e2     = E.Entity vao2 (V3 0 0 0) (axisAngle (V3 0 0 0) 0) 1
-  let screenWidth = fromIntegral winWidth :: GLfloat
+  let e1     =  E.Entity vao1 (V3 1 0 0) (axisAngle (V3 0 0 0) 0) 1
+  let e2     =  E.Entity vao2 (V3 0 0 (-5)) (axisAngle (V3 0 0 0) 0) 1
+
+  let screenWidth  = fromIntegral winWidth :: GLfloat
   let screenHeight = fromIntegral winHeight :: GLfloat
-  let projM  = perspective 45 (screenWidth / screenHeight) 0.1 100.0
-  let positions = Map.fromList $ map (\((U.VaoModel id _), p) -> (id, p)) $ zip [vao1, vao2] [V3 0 0 0, V3 1 0 0]
+  let projM        = perspective 45 (screenWidth / screenHeight) 0.1 100.0
   applyUniform projM projection projP
+
   return $ ([e1, e2], RenderData
     { _model           = model
     , _modelP          = modelP
