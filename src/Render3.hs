@@ -46,9 +46,6 @@ data RenderData = RenderData
   , _modelP          :: Ptr (V4 (V4 GLfloat))
   , _view            :: GLint
   , _viewP           :: Ptr (V4 (V4 GLfloat))
-  , _projection      :: GLint
-  , _projP           :: Ptr (V4 (V4 GLfloat))
-  , _projM           :: M44 GLfloat
   }
 
 colors = [
@@ -112,14 +109,12 @@ setupData = do
   let screenHeight = fromIntegral winHeight :: GLfloat
   let projM  = perspective 45 (screenWidth / screenHeight) 0.1 100.0
   let positions = Map.fromList $ map (\((U.VaoModel id _), p) -> (id, p)) $ zip [vao1, vao2] [V3 0 0 0, V3 1 0 0]
+  applyUniform projM projection projP
   return $ ([e1, e2], RenderData
     { _model           = model
     , _modelP          = modelP
     , _view            = view
     , _viewP           = viewP
-    , _projection      = projection
-    , _projP           = projP
-    , _projM           = projM
     })
 
 transformEntities :: GLfloat -> [E.Entity] -> [E.Entity]
@@ -151,10 +146,8 @@ displayLoop window renderData entities = forever $ do
   glClear GL_COLOR_BUFFER_BIT
 
   let viewM = mkTransformation (axisAngle (V3 (0 :: GLfloat) 0 1) 0) (V3 0 0 (-3))
-  let projM = _projM renderData
   -- assign uniforms
   applyUniform viewM (_view renderData) (_viewP renderData)
-  applyUniform projM (_projection renderData) (_projP renderData)
 
   t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
   let es  = transformEntities t entities
