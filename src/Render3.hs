@@ -4,8 +4,8 @@ import Control.Monad.Reader
 import Control.Monad (when, unless, forever)
 import Control.Exception
 import qualified Data.Map as Map
-import Foreign
-import Foreign.C.String (CString, newCAStringLen, newCString)
+import Foreign hiding (rotate)
+import Foreign.C.String
 import System.Exit
 
 import qualified Graphics.UI.GLFW as GLFW
@@ -16,6 +16,7 @@ import Linear
 import qualified Util.Common as U
 import qualified Util.Shaders as U
 import qualified Util.Model as U
+import qualified Entity as E
 
 winWidth = 800
 winHeight = 600
@@ -40,19 +41,14 @@ initWindow = do
     Just window -> return window
     Nothing     -> throwIO U.WindowCreationError
 
-type ModelData = Map.Map GLuint (V3 GLfloat)
-
 data RenderData = RenderData
-  { _models          :: [U.VaoModel]
-  , _shaderProgram   :: GLuint
-  , _model           :: CString
+  { _model           :: GLint
   , _modelP          :: Ptr (V4 (V4 GLfloat))
-  , _view            :: CString
+  , _view            :: GLint
   , _viewP           :: Ptr (V4 (V4 GLfloat))
-  , _projection      :: CString
+  , _projection      :: GLint
   , _projP           :: Ptr (V4 (V4 GLfloat))
   , _projM           :: M44 GLfloat
-  , _positions       :: ModelData
   }
 
 colors = [
@@ -90,7 +86,13 @@ setupWindow window = do
   GLFW.makeContextCurrent (Just window)
   glViewport 0 0 (fromIntegral x) (fromIntegral y)
 
-setupData :: IO RenderData
+getUniformLocation :: String -> GLuint -> IO GLint
+getUniformLocation name prog = withCString name (glGetUniformLocation prog)
+
+terminate :: IO ()
+terminate = GLFW.terminate >> exitSuccess
+
+setupData :: IO ([E.Entity], RenderData)
 setupData = do
   shaderProgram <- U.initShaders
     [ (GL_VERTEX_SHADER, "src/glsl/vertex.shader")
@@ -98,64 +100,66 @@ setupData = do
     ]
   vao1       <- U.loadToVao $ U.Object verticies colors indices
   vao2       <- U.loadToVao $ U.Object verticies2 colors indices
-  model      <- newCString "model"
-  modelP     <- malloc
-  view       <- newCString "view"
-  viewP      <- malloc
-  projection <- newCString "projection"
+  model      <- getUniformLocation "model" shaderProgram
+  view       <- getUniformLocation "view" shaderProgram
+  projection <- getUniformLocation "projection" shaderProgram
   projP      <- malloc
+  modelP     <- malloc
+  viewP      <- malloc
+  let e1     = E.Entity vao1 (V3 1 0 0) (axisAngle (V3 0 0 0) 0) 1
+  let e2     = E.Entity vao2 (V3 0 0 0) (axisAngle (V3 0 0 0) 0) 1
   let screenWidth = fromIntegral winWidth :: GLfloat
   let screenHeight = fromIntegral winHeight :: GLfloat
   let projM  = perspective 45 (screenWidth / screenHeight) 0.1 100.0
   let positions = Map.fromList $ map (\((U.VaoModel id _), p) -> (id, p)) $ zip [vao1, vao2] [V3 0 0 0, V3 1 0 0]
-  return $ RenderData
-    { _models          = [vao1, vao2]
-    , _shaderProgram   = shaderProgram
-    , _model           = model
+  return $ ([e1, e2], RenderData
+    { _model           = model
     , _modelP          = modelP
     , _view            = view
     , _viewP           = viewP
     , _projection      = projection
     , _projP           = projP
     , _projM           = projM
-    , _positions       = positions
-    }
+    })
 
-terminate :: IO ()
-terminate = GLFW.terminate >> exitSuccess
+transformEntities :: GLfloat -> [E.Entity] -> [E.Entity]
+transformEntities delta [e1, e2] = [r1, r2]
+  where
+    r1 = E.rotate (delta * 10) (V3 0 1 0) e1
+    r2 = E.rotate delta (V3 1 0 0) e2
 
-displayLoop :: GLFW.Window -> RenderData -> IO ()
-displayLoop window renderData = forever $ do
+applyUniform :: M44 GLfloat -> GLint -> (Ptr (V4 (V4 GLfloat))) -> IO ()
+applyUniform mat loc mem = do
+  poke mem (transpose mat)
+  glUniformMatrix4fv loc 1 GL_FALSE (castPtr mem)
+
+render :: RenderData -> E.Entity -> IO ()
+render rd (E.Entity (U.VaoModel id numVertices) pos rot scale) = do
+  let modelM = mkTransformation rot pos
+  applyUniform modelM (_model rd) (_modelP rd)
+  glBindVertexArray id
+  glDrawElements GL_TRIANGLES numVertices GL_UNSIGNED_INT nullPtr
+  glBindVertexArray 0
+
+displayLoop :: GLFW.Window -> RenderData -> [E.Entity] -> IO ()
+displayLoop window renderData entities = forever $ do
   shouldContinue <- not <$> GLFW.windowShouldClose window
   unless shouldContinue terminate
 
   GLFW.pollEvents
-  timeValue <- maybe 0 realToFrac <$> GLFW.getTime
   glClearColor 0.2 0.3 0.3 1.0
   glClear GL_COLOR_BUFFER_BIT
 
-  -- assign uniforms
-  let shaderProgram = _shaderProgram renderData
-  modelLoc <- glGetUniformLocation shaderProgram (_model renderData)
-  viewLoc <- glGetUniformLocation shaderProgram (_view renderData)
-  projLoc <- glGetUniformLocation shaderProgram (_projection renderData)
-
   let viewM = mkTransformation (axisAngle (V3 (0 :: GLfloat) 0 1) 0) (V3 0 0 (-3))
   let projM = _projM renderData
-  poke (_viewP renderData) (transpose viewM)
-  poke (_projP renderData) (transpose projM)
-  glUniformMatrix4fv viewLoc 1 GL_FALSE (castPtr $ _viewP renderData)
-  glUniformMatrix4fv projLoc 1 GL_FALSE (castPtr $ _projP renderData)
+  -- assign uniforms
+  applyUniform viewM (_view renderData) (_viewP renderData)
+  applyUniform projM (_projection renderData) (_projP renderData)
 
-  forM_ (_models renderData) $ \(U.VaoModel id numVertices) -> do
-    let position = (_positions renderData) Map.! id
-    let modelM = mkTransformation (axisAngle (V3 (0.5 :: GLfloat) 0 0) timeValue) position
-    poke (_modelP renderData) (transpose modelM)
-    glUniformMatrix4fv modelLoc 1 GL_FALSE (castPtr $ _modelP renderData)
-    glBindVertexArray id
-    glDrawElements GL_TRIANGLES numVertices GL_UNSIGNED_INT nullPtr
-    glBindVertexArray 0
+  t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
+  let es  = transformEntities t entities
 
+  mapM (render renderData) es
   GLFW.swapBuffers window
 
 go :: IO ()
@@ -166,5 +170,5 @@ go = catch body handler
     body = do
       window <- initWindow
       setupWindow window
-      renderData <- setupData
-      displayLoop window renderData
+      (es, renderData ) <- setupData
+      displayLoop window renderData es

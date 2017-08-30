@@ -15,7 +15,7 @@ data Object = Object
 data VaoModel = VaoModel
   { _vaoID       :: GLuint
   , _numVertices :: GLsizei
-  }
+  } deriving (Show)
 
 -- | A VAO stores data about a 3d model. They have a number of slots called
 -- Attribute Lists. You store different sets of data into these attribute
