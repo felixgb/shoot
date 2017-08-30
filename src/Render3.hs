@@ -1,9 +1,12 @@
 module Render3 where
 
+import Control.Monad.Loops (iterateM_)
 import Control.Monad.Reader
 import Control.Monad (when, unless, forever)
 import Control.Exception
-import qualified Data.Map as Map
+import Data.IORef
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Foreign hiding (rotate)
 import Foreign.C.String
 import System.Exit
@@ -24,9 +27,14 @@ winHeight = 600
 
 winTitle = "HELL YEAH"
 
-keyCallback :: GLFW.KeyCallback
-keyCallback window key scanCode keyState modKeys = do
-    print key
+type KeysRef = IORef (Set GLFW.Key)
+
+keyCallback :: KeysRef -> GLFW.KeyCallback
+keyCallback ref window key scanCode keyState modKeys = do
+    case keyState of
+      GLFW.KeyState'Pressed -> modifyIORef ref (Set.insert key)
+      GLFW.KeyState'Released -> modifyIORef ref (Set.delete key)
+      _ -> return ()
     when (key == GLFW.Key'Escape && keyState == GLFW.KeyState'Pressed)
         (GLFW.setWindowShouldClose window True)
 
@@ -42,47 +50,39 @@ initWindow = do
     Just window -> return window
     Nothing     -> throwIO U.WindowCreationError
 
+setupWindow :: GLFW.Window -> KeysRef -> IO ()
+setupWindow window ref = do
+  (x, y) <- GLFW.getFramebufferSize window
+  GLFW.setKeyCallback window (Just $ keyCallback ref)
+  GLFW.makeContextCurrent (Just window)
+  glViewport 0 0 (fromIntegral x) (fromIntegral y)
+
+data Camera = Camera
+  { _pos   :: V3 GLfloat
+  , _front :: V3 GLfloat
+  , _up    :: V3 GLfloat
+  }
+
+updateCamera :: GLfloat -> Camera -> Set GLFW.Key -> Camera
+updateCamera speed = Set.foldr modCam
+  where
+    modCam key cam@(Camera pos front up) = case key of
+      GLFW.Key'W -> cam { _pos = pos ^+^ (speed *^ front) }
+      GLFW.Key'S -> cam { _pos = pos ^-^ (speed *^ front) }
+      GLFW.Key'A -> cam { _pos = pos ^-^ (speed *^ (normalize (cross front up))) }
+      GLFW.Key'D -> cam { _pos = pos ^+^ (speed *^ (normalize (cross front up))) }
+      _ -> cam
+
+toViewMatrix :: Camera -> M44 GLfloat
+toViewMatrix (Camera pos front up) = lookAt pos (pos ^+^ front) up
+
 data RenderData = RenderData
   { _model           :: GLint
   , _modelP          :: Ptr (V4 (V4 GLfloat))
   , _view            :: GLint
   , _viewP           :: Ptr (V4 (V4 GLfloat))
+  , _keysRef         :: KeysRef
   }
-
-colors = [
-    1.0 , 0.0 , 0.0 , -- Top Right
-    0.0 , 0.0 , 1.0 , -- Bottom Right
-    0.0 , 1.0 , 0.0 , -- Bottom Left
-    1.0 , 1.0 , 0.0   -- Top Left
-  ] :: [GLfloat]
-
-verticies = [
-    -- positions
-    0.5  , 0.5  , 0.0 , -- Top Right
-    0.5  , -0.5 , 0.0 , -- Bottom Right
-    -0.5 , -0.5 , 0.0 , -- Bottom Left
-    -0.5 , 0.5  , 0.0   -- Top Left
-  ] :: [GLfloat]
-
-verticies2 = [
-    -- positions
-    0.2  , 0.2  , 0.0 , -- Top Right
-    0.2  , -0.2 , 0.0 , -- Bottom Right
-    -0.2 , -0.2 , 0.0 , -- Bottom Left
-    -0.2 , 0.2  , 0.0   -- Top Left
-  ] :: [GLfloat]
-
-indices = [  -- Note that we start from 0!
-  0, 1, 3, -- First Triangle
-  1, 2, 3  -- Second Triangle
-  ] :: [GLuint]
-
-setupWindow :: GLFW.Window -> IO ()
-setupWindow window = do
-  (x, y) <- GLFW.getFramebufferSize window
-  GLFW.setKeyCallback window (Just keyCallback)
-  GLFW.makeContextCurrent (Just window)
-  glViewport 0 0 (fromIntegral x) (fromIntegral y)
 
 getUniformLocation :: String -> GLuint -> IO GLint
 getUniformLocation name prog = withCString name (glGetUniformLocation prog)
@@ -90,8 +90,8 @@ getUniformLocation name prog = withCString name (glGetUniformLocation prog)
 terminate :: IO ()
 terminate = GLFW.terminate >> exitSuccess
 
-setupData :: IO ([E.Entity], RenderData)
-setupData = do
+setupData :: KeysRef -> IO ([E.Entity], RenderData)
+setupData ref = do
   shaderProgram <- U.initShaders
     [ (GL_VERTEX_SHADER, "src/glsl/vertex.shader")
     , (GL_FRAGMENT_SHADER, "src/glsl/fragment.shader")
@@ -118,6 +118,7 @@ setupData = do
     , _modelP          = modelP
     , _view            = view
     , _viewP           = viewP
+    , _keysRef         = ref
     })
 
 transformEntities :: GLfloat -> [E.Entity] -> [E.Entity]
@@ -139,24 +140,34 @@ render rd (E.Entity (U.VaoModel id numVertices) pos rot scale) = do
   glDrawElements GL_TRIANGLES numVertices GL_UNSIGNED_INT nullPtr
   glBindVertexArray 0
 
+initCamera :: Camera
+initCamera = Camera (V3 0 0 3) (V3 0 0 (-1)) (V3 0 1 0)
+
 displayLoop :: GLFW.Window -> RenderData -> [E.Entity] -> IO ()
-displayLoop window renderData entities = forever $ do
-  shouldContinue <- not <$> GLFW.windowShouldClose window
-  unless shouldContinue terminate
+displayLoop window renderData entities = iterateM_ loop (0.0, initCamera)
+  where
+    loop (lastTime, oldCamera) = do
+      shouldContinue <- not <$> GLFW.windowShouldClose window
+      unless shouldContinue terminate
 
-  GLFW.pollEvents
-  glClearColor 0.2 0.3 0.3 1.0
-  glClear GL_COLOR_BUFFER_BIT
+      GLFW.pollEvents
+      glClearColor 0.2 0.3 0.3 1.0
+      glClear GL_COLOR_BUFFER_BIT
 
-  let viewM = mkTransformation (axisAngle (V3 (0 :: GLfloat) 0 1) 0) (V3 0 0 (-3))
-  -- assign uniforms
-  applyUniform viewM (_view renderData) (_viewP renderData)
+      t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
+      let deltaTime = t - lastTime
+      let cameraSpeed = 5 * deltaTime
+      keysDown <- readIORef (_keysRef renderData)
+      let camera = updateCamera cameraSpeed oldCamera keysDown
+      let viewM = toViewMatrix camera
+      -- assign uniforms
+      applyUniform viewM (_view renderData) (_viewP renderData)
 
-  t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
-  let es  = transformEntities t entities
+      let es  = transformEntities t entities
 
-  mapM (render renderData) es
-  GLFW.swapBuffers window
+      mapM (render renderData) es
+      GLFW.swapBuffers window
+      return (t, camera)
 
 go :: IO ()
 go = catch body handler
@@ -164,7 +175,8 @@ go = catch body handler
     handler :: U.ShootError -> IO ()
     handler ex = print ex >> GLFW.terminate
     body = do
+      ref <- newIORef Set.empty
       window <- initWindow
-      setupWindow window
-      (es, renderData ) <- setupData
+      setupWindow window ref
+      (es, renderData ) <- setupData ref
       displayLoop window renderData es

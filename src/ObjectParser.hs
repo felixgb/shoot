@@ -11,8 +11,7 @@ type ObjectState = State U.Object
 
 parseObjectFromFile :: FilePath -> IO U.Object
 parseObjectFromFile path = do
-  source <- readFile path
-  let tokens = scan source
+  tokens <- scan <$> readFile path
   return $ execState (parseObject tokens) emptyObj
     where emptyObj = U.Object [] [] []
 
