@@ -11,19 +11,20 @@ copyright:           2017 Felix Bowman
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
-                   , src/Lexer.x
+                   , src/Parser/Lexer.x
 cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Render3
-                     , Util.Common
-                     , Util.Shaders
+  exposed-modules:     Util.Common
+                     , Graphics.Shaders
+                     , Graphics.Render
                      , Util.Model
                      , Entity
                      , Movement
-                     , Lexer
-                     , ObjectParser
+                     , Parser.Lexer
+                     , Parser.ObjectParser
+                     , Window
   build-depends:       base >= 4.7 && < 5
                      , mtl
                      , bytestring
@@ -36,11 +37,12 @@ library
                      , monad-loops
   build-tools:         alex
   default-language:    Haskell2010
+  ghc-options:         -Wall
 
 executable shoot-exe
   hs-source-dirs:      app
   main-is:             Main.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Odph
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
   build-depends:       base
                      , shoot
   default-language:    Haskell2010

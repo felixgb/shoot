@@ -1,25 +1,23 @@
-module Util.Shaders
+module Graphics.Shaders
   ( initShaders
   ) where
 
-import Control.Monad (when, unless, forever)
 import Control.Exception
-import System.Exit
 import Foreign
 import Foreign.C.String (newCAStringLen)
 
-import qualified Graphics.UI.GLFW as GLFW
 import Graphics.GL.Core33
-import Graphics.GL.Types
 
 import qualified Util.Common as U
 
 -- | Get the string from the program and throw the error with the data
+
+handleError :: (Num t, Enum a1, Enum b, Exception e, Integral a2, Storable a1, Storable a2) => (t -> Ptr a2 -> Ptr a1 -> IO a) -> ([b] -> e) -> IO b1
 handleError getLog err = do
-  let infoLength = 512
+  let infoLength = 512 :: Int
   resultP <- malloc
   infoLog <- mallocArray (fromIntegral infoLength)
-  getLog (fromIntegral infoLength) resultP infoLog
+  _ <- getLog (fromIntegral infoLength) resultP infoLog
   result <- fromIntegral <$> peek resultP
   logBytes <- peekArray result infoLog
   throwIO $ err (map (toEnum . fromEnum) logBytes)

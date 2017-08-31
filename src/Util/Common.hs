@@ -7,6 +7,7 @@ data ShootError
   = WindowCreationError
   | ShaderCompileError String
   | ProgramLinkError String
+  | ParseError
   deriving (Show)
 
 instance Exception ShootError

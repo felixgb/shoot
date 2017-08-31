@@ -1,5 +1,5 @@
 {
-module Lexer
+module Parser.Lexer
     ( Token (..)
     , scan
     ) where
@@ -17,11 +17,11 @@ tokens :-
     \#                    ;
     \-?$digit* \. $digit+ { \s -> TkFloating (read s)  }
     \-?[0-9][$digit]*     { \s -> TkInt ((read s) - 1) }
-    \/                    { \s -> TkSlash              }
-    "v"                   { \s -> TkV                  }
-    "vt"                  { \s -> TkVT                 }
-    "vn"                  { \s -> TkVN                 }
-    "f"                   { \s -> TkF                  }
+    \/                    { \_ -> TkSlash              }
+    "v"                   { \_ -> TkV                  }
+    "vt"                  { \_ -> TkVT                 }
+    "vn"                  { \_ -> TkVN                 }
+    "f"                   { \_ -> TkF                  }
     $char+                ;
     \.                    ;
 {

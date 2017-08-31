@@ -1,6 +1,6 @@
 module Movement where
 
-import Control.Monad (when, unless, forever)
+import Control.Monad (when)
 import Data.IORef
 import Data.Maybe (fromMaybe)
 import Data.Fixed (mod')
@@ -9,7 +9,6 @@ import qualified Data.Set as Set
 
 import qualified Graphics.UI.GLFW as GLFW
 import Graphics.GL.Core33
-import Graphics.GL.Types
 import Linear
 
 data Camera = Camera
@@ -28,8 +27,14 @@ type KeysRef = IORef (Set GLFW.Key)
 
 type MouseRef = IORef MouseInfo
 
+initMouse :: MouseInfo
+initMouse = MouseInfo Nothing (0, (-90)) (V3 0 0 (-1))
+
+initCamera :: Camera
+initCamera = Camera (V3 0 0 3) (V3 0 0 (-1)) (V3 0 1 0)
+
 keyCallback :: KeysRef -> GLFW.KeyCallback
-keyCallback ref window key scanCode keyState modKeys = do
+keyCallback ref window key _ keyState _ = do
     case keyState of
       GLFW.KeyState'Pressed -> modifyIORef ref (Set.insert key)
       GLFW.KeyState'Released -> modifyIORef ref (Set.delete key)
@@ -38,7 +43,7 @@ keyCallback ref window key scanCode keyState modKeys = do
         (GLFW.setWindowShouldClose window True)
 
 mouseCallback :: MouseRef -> GLFW.CursorPosCallback
-mouseCallback ref window xPos yPos = modifyIORef ref $ \info -> (mouseFunc xPos yPos info)
+mouseCallback ref _ xPos yPos = modifyIORef ref $ \info -> (mouseFunc xPos yPos info)
 
 mouseFunc :: Double -> Double -> MouseInfo -> MouseInfo
 mouseFunc xPos yPos oldInfo = MouseInfo (Just (xPos, yPos)) (newPitch, newYaw) front
@@ -55,8 +60,8 @@ mouseFunc xPos yPos oldInfo = MouseInfo (Just (xPos, yPos)) (newPitch, newYaw) f
     yawR               = toRadians newYaw
     front              = normalize $ V3 (cos yawR * cos pitchR) (sin pitchR) (sin yawR * cos pitchR)
 
-updateCamera :: GLfloat -> Camera -> Set GLFW.Key -> Camera
-updateCamera speed cam@(Camera pos front up) keyset = cam { _pos = pos ^+^ (speed *^ normalize moveVector) }
+keyFunc :: GLfloat -> Camera -> Set GLFW.Key -> Camera
+keyFunc speed cam@(Camera pos front up) keyset = cam { _pos = pos ^+^ (speed *^ normalize moveVector) }
   where
     modCam key vec = case key of
       GLFW.Key'W -> vec ^+^ front
@@ -71,8 +76,9 @@ updateCamera speed cam@(Camera pos front up) keyset = cam { _pos = pos ^+^ (spee
 toViewMatrix :: Camera -> M44 GLfloat
 toViewMatrix (Camera pos front up) = lookAt pos (pos ^+^ front) up
 
-initMouse :: MouseInfo
-initMouse = MouseInfo Nothing (0, (-90)) (V3 0 0 (-1))
-
-initCamera :: Camera
-initCamera = Camera (V3 0 0 3) (V3 0 0 (-1)) (V3 0 1 0)
+updateCamera :: Set GLFW.Key -> MouseInfo -> Camera -> GLfloat -> GLfloat -> Camera
+updateCamera keys mouse oldCamera elapsedTime currentTime = cameraTemp { _front = _frontVec mouse }
+  where
+    deltaTime   = currentTime - elapsedTime
+    cameraSpeed = deltaTime * 5
+    cameraTemp  = keyFunc cameraSpeed oldCamera keys

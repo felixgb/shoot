@@ -1,15 +1,17 @@
 module Util.Model where
 
-import Data.List
-import Foreign
+import Data.Sequence (Seq)
+import Data.Foldable (toList)
+import qualified Data.Sequence as Seq
 
 import Graphics.GL.Core33
-import Graphics.GL.Types
+
+import Foreign
 
 data Object = Object
-  { vertices :: [GLfloat]
-  , colors   :: [GLfloat]
-  , indices  :: [GLuint]
+  { vertices :: Seq GLfloat
+  , colors   :: Seq GLfloat
+  , indices  :: Seq GLuint
   } deriving (Show)
 
 data VaoModel = VaoModel
@@ -27,9 +29,9 @@ data VaoModel = VaoModel
 -- Each VAO has a unique ID, so you can reference it any time sing its ID.  You
 -- can use the id of a VAO to render an object
 loadToVao :: Object -> IO VaoModel
-loadToVao (Object vs cs is) = do
-  verticesP <- newArray vs
-  indicesP <- newArray is
+loadToVao (Object vq _ iq) = do
+  verticesP <- newArray $ toList vq
+  indicesP <- newArray $ toList iq
 
   -- setup vertex array object
   vaoP <- malloc
@@ -68,15 +70,16 @@ loadToVao (Object vs cs is) = do
 
   -- unbind this VAO
   glBindVertexArray 0
-  return $ VaoModel vao (fromIntegral $ length is)
+  return $ VaoModel vao (fromIntegral $ Seq.length iq)
   where
     floatSize        = (fromIntegral $ sizeOf (0.0 :: GLfloat)) :: GLsizei
     -- three float offset because colors start after x y z
-    threeFloatOffset = castPtr $ plusPtr nullPtr (fromIntegral $ 3 * floatSize)
-    verticesSize     = fromIntegral $ sizeOf (0.0 :: GLfloat) * (length vs)
-    indicesSize      = fromIntegral $ sizeOf (0 :: GLuint) * (length is)
-    interwoven       = interweave vs cs
+    -- threeFloatOffset = castPtr $ plusPtr nullPtr (fromIntegral $ 3 * floatSize)
+    verticesSize     = fromIntegral $ sizeOf (0.0 :: GLfloat) * (Seq.length vq)
+    indicesSize      = fromIntegral $ sizeOf (0 :: GLuint) * (Seq.length iq)
+    -- interwoven       = interweave vs cs
 
+interweave :: [a] -> [a] -> [a]
 interweave [] [] = []
 interweave as xs = ah ++ xh ++ interweave at xt
   where

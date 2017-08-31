@@ -1,6 +1,6 @@
 module Main where
 
-import Render3
+import Window
 
 main :: IO ()
 main = go
