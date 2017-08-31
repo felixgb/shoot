@@ -21,6 +21,7 @@ library
                      , Graphics.Render
                      , Util.Model
                      , Entity
+                     , Light
                      , Movement
                      , Parser.Lexer
                      , Parser.ObjectParser

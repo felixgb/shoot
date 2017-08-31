@@ -1,17 +1,14 @@
 module Util.Model where
 
-import Data.Sequence (Seq)
-import Data.Foldable (toList)
-import qualified Data.Sequence as Seq
-
 import Graphics.GL.Core33
 
 import Foreign
 
 data Object = Object
-  { vertices :: Seq GLfloat
-  , colors   :: Seq GLfloat
-  , indices  :: Seq GLuint
+  { vertices      :: [GLfloat]
+  , colors        :: [GLfloat]
+  , vertexNormals :: [GLfloat]
+  , indices       :: [GLuint]
   } deriving (Show)
 
 data VaoModel = VaoModel
@@ -29,9 +26,9 @@ data VaoModel = VaoModel
 -- Each VAO has a unique ID, so you can reference it any time sing its ID.  You
 -- can use the id of a VAO to render an object
 loadToVao :: Object -> IO VaoModel
-loadToVao (Object vq _ iq) = do
-  verticesP <- newArray $ toList vq
-  indicesP <- newArray $ toList iq
+loadToVao (Object vs _ vns is) = do
+  indicesP <- newArray is
+  dataP <- newArray interwoven
 
   -- setup vertex array object
   vaoP <- malloc
@@ -49,7 +46,9 @@ loadToVao (Object vq _ iq) = do
   glGenBuffers 1 vboP
   vbo <- peek vboP
   glBindBuffer GL_ARRAY_BUFFER vbo
-  glBufferData GL_ARRAY_BUFFER verticesSize (castPtr verticesP) GL_STATIC_DRAW
+  glBufferData GL_ARRAY_BUFFER interwovenSize (castPtr dataP) GL_STATIC_DRAW
+
+  -- setup vertex normal buffer object and send it data
 
   -- set up an element buffer and send it data
   eboP <- malloc
@@ -61,23 +60,21 @@ loadToVao (Object vq _ iq) = do
   -- position attribute is in 0
   -- 6 is the number from the start of a vertex to the start of the next
   -- vertex, eg x y z r g b x
-  glVertexAttribPointer 0 3 GL_FLOAT GL_FALSE (3 * floatSize) nullPtr
-  glEnableVertexAttribArray 0
+  glVertexAttribPointer 0 3 GL_FLOAT GL_FALSE (6 * floatSize) nullPtr
 
-  -- color attribute is in 1
-  -- glVertexAttribPointer 1 3 GL_FLOAT GL_FALSE (6 * floatSize) threeFloatOffset
-  -- glEnableVertexAttribArray 1
+  -- vertexNormal attribute is in 1
+  glVertexAttribPointer 1 3 GL_FLOAT GL_FALSE (6 * floatSize) threeFloatOffset
 
   -- unbind this VAO
   glBindVertexArray 0
-  return $ VaoModel vao (fromIntegral $ Seq.length iq)
+  return $ VaoModel vao (fromIntegral $ length is)
   where
     floatSize        = (fromIntegral $ sizeOf (0.0 :: GLfloat)) :: GLsizei
-    -- three float offset because colors start after x y z
-    -- threeFloatOffset = castPtr $ plusPtr nullPtr (fromIntegral $ 3 * floatSize)
-    verticesSize     = fromIntegral $ sizeOf (0.0 :: GLfloat) * (Seq.length vq)
-    indicesSize      = fromIntegral $ sizeOf (0 :: GLuint) * (Seq.length iq)
-    -- interwoven       = interweave vs cs
+    interwoven       = interweave vs vns
+    -- three float offset because vertex normals start after x y z
+    threeFloatOffset = castPtr $ plusPtr nullPtr (fromIntegral $ 3 * floatSize)
+    indicesSize      = fromIntegral $ sizeOf (0 :: GLuint) * (length is)
+    interwovenSize   = fromIntegral $ sizeOf (0.0 :: GLfloat) * (length interwoven)
 
 interweave :: [a] -> [a] -> [a]
 interweave [] [] = []

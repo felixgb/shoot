@@ -1,7 +1,5 @@
 module Parser.ObjectParser where
 
-import Data.Sequence (Seq, (><))
-import qualified Data.Sequence as Seq
 import Control.Monad.Except
 import Control.Monad.State
 import Control.Exception
@@ -14,39 +12,47 @@ import qualified Util.Common as U
 
 type ObjectState = StateT U.Object U.ThrowsError
 
-runParser :: ObjectState a -> Either U.ShootError U.Object
-runParser parser = runExcept $ execStateT parser emptyObj
-    where emptyObj = U.Object Seq.empty Seq.empty Seq.empty
-
 parseObject :: [Token] -> ObjectState ()
 parseObject [] = return ()
 parseObject tks = case head tks of
-  TkV -> parseVertex tks >>= parseObject
-  TkF -> parseFace tks >>= parseObject
-  _   -> parseObject (tail tks)
+  TkV  -> parseVertex tks >>= parseObject
+  TkVN -> parseVertexNormal tks >>= parseObject
+  TkF  -> parseFace tks >>= parseObject
+  _    -> parseObject (tail tks)
 
-insertVertex :: Seq GLfloat -> U.Object -> U.Object
-insertVertex vs obj = obj { U.vertices = U.vertices obj >< vs }
+insertVertex :: [GLfloat] -> U.Object -> U.Object
+insertVertex vs obj = obj { U.vertices = vs ++ U.vertices obj }
 
-insertIndex :: Seq GLuint -> U.Object -> U.Object
-insertIndex is obj = obj { U.indices = U.indices obj >< is }
+insertVertexNormal :: [GLfloat] -> U.Object -> U.Object
+insertVertexNormal vns obj = obj { U.vertexNormals = vns ++ U.vertexNormals obj }
+
+insertIndex :: [GLuint] -> U.Object -> U.Object
+insertIndex is obj = obj { U.indices = is ++ U.indices obj }
 
 parseVertex :: [Token] -> ObjectState [Token]
-parseVertex (TkV : TkFloating x : TkFloating y : TkFloating z : ts) = modify (insertVertex $ Seq.fromList [x, y, z]) >> return ts
+parseVertex (TkV : TkFloating x : TkFloating y : TkFloating z : ts) = modify (insertVertex [x, y, z]) >> return ts
 parseVertex _ = throwError $ U.ParseError
+
+parseVertexNormal :: [Token] -> ObjectState [Token]
+parseVertexNormal (TkVN : TkFloating x : TkFloating y : TkFloating z : ts) = modify (insertVertexNormal [x, y, z]) >> return ts
+parseVertexNormal _ = throwError $ U.ParseError
 
 parseFace :: [Token] -> ObjectState [Token]
 parseFace (TkF : ts) = parseIndex ts >>= parseIndex >>= parseIndex
 parseFace _ = throwError $ U.ParseError
 
 parseIndex :: [Token] -> ObjectState [Token]
-parseIndex (TkInt i : TkSlash : _ : _ : _ : ts) = modify (insertIndex $ Seq.fromList [i]) >> return ts
-parseIndex (TkInt i : ts) = modify (insertIndex $ Seq.fromList [i]) >> return ts
+parseIndex (TkInt i : TkSlash : _ : _ : _ : ts) = modify (insertIndex [i]) >> return ts
+parseIndex (TkInt i : ts) = modify (insertIndex [i]) >> return ts
 parseIndex _ = throwError $ U.ParseError
+
+runParser :: ObjectState a -> Either U.ShootError U.Object
+runParser parser = runExcept $ execStateT parser emptyObj
+    where emptyObj = U.Object [] [] [] []
 
 parseObjectFromFile :: FilePath -> IO U.Object
 parseObjectFromFile path = do
   tokens <- scan <$> readFile path
   case runParser (parseObject tokens) of
     Left err -> throwIO $ err
-    Right ok -> return ok
+    Right (U.Object a b c d) -> return $ U.Object (reverse a) (reverse b) (reverse c) (reverse d)

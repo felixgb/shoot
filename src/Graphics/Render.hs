@@ -36,16 +36,22 @@ applyUniform mat loc mem = do
   poke mem (transpose mat)
   glUniformMatrix4fv loc 1 GL_FALSE (castPtr mem)
 
+applyUniformVec :: V3 GLfloat -> GLint -> Ptr (V3 GLfloat) -> IO ()
+applyUniformVec vec loc mem = do
+  poke mem vec
+  glUniform3fv loc 1 (castPtr mem)
+
 render :: RenderData -> Entity -> IO ()
 render rd (Entity (VaoModel vaoID numVertices) pos rot scale) = do
   let modelM = mkTransformation rot pos
   applyUniform modelM (_modelLoc rd) (_modelP rd)
   glBindVertexArray vaoID
-  glDrawElements GL_TRIANGLES numVertices GL_UNSIGNED_INT nullPtr
   glEnableVertexAttribArray 0
-  glBindVertexArray 0
+  glEnableVertexAttribArray 1
+  glDrawElements GL_TRIANGLES numVertices GL_UNSIGNED_INT nullPtr
+  glDisableVertexAttribArray 0
   glDisableVertexAttribArray 1
-
+  glBindVertexArray 0
 
 displayLoop :: GLFW.Window -> RenderData -> [Entity] -> IO ()
 displayLoop window renderData entities = iterateM_ loop (0.0, initCamera)

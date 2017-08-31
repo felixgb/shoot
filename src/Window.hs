@@ -18,10 +18,10 @@ import Movement
 import Entity
 
 winWidth :: Int
-winWidth = 2560
+winWidth = 800
 
 winHeight :: Int
-winHeight = 1440
+winHeight = 600
 
 winTitle :: String
 winTitle = "HELL YEAH"
@@ -31,10 +31,11 @@ initWindow = do
   _ <- GLFW.init
   GLFW.windowHint (GLFW.WindowHint'ContextVersionMajor 3)
   GLFW.windowHint (GLFW.WindowHint'ContextVersionMinor 3)
+  GLFW.windowHint (GLFW.WindowHint'DepthBits 16)
   GLFW.windowHint (GLFW.WindowHint'OpenGLProfile GLFW.OpenGLProfile'Core)
   GLFW.windowHint (GLFW.WindowHint'Resizable False)
   mon <- GLFW.getPrimaryMonitor
-  maybeWindow <- GLFW.createWindow winWidth winHeight winTitle mon Nothing
+  maybeWindow <- GLFW.createWindow winWidth winHeight winTitle Nothing Nothing
   case maybeWindow of
     Just window -> return window
     Nothing     -> throwIO WindowCreationError
@@ -43,10 +44,10 @@ setupWindow :: GLFW.Window -> KeysRef -> MouseRef -> IO ()
 setupWindow window keyRef mouseRef = do
   GLFW.setCursorInputMode window GLFW.CursorInputMode'Disabled
   (x, y) <- GLFW.getFramebufferSize window
-  glEnable GL_DEPTH_TEST
   GLFW.setKeyCallback window (Just $ keyCallback keyRef)
   GLFW.setCursorPosCallback window (Just $ mouseCallback mouseRef)
   GLFW.makeContextCurrent (Just window)
+  glEnable GL_DEPTH_TEST
   glViewport 0 0 (fromIntegral x) (fromIntegral y)
 
 
@@ -56,17 +57,21 @@ setupData keyRef mouseRef = do
     [ (GL_VERTEX_SHADER, "src/glsl/vertex.shader")
     , (GL_FRAGMENT_SHADER, "src/glsl/fragment.shader")
     ]
-  cube       <- parseObjectFromFile "resources/cube.obj"
+  -- cube       <- parseObjectFromFile "resources/cube.obj"
   teapot     <- parseObjectFromFile "resources/teapot.obj"
-  dragon     <- parseObjectFromFile "resources/dragon.obj"
-  vao1       <- loadToVao dragon
+  -- dragon     <- parseObjectFromFile "resources/dragon.obj"
+  vao1       <- loadToVao teapot
   vao2       <- loadToVao teapot
   model      <- getUniformLocation "model" shaderProgram
   view       <- getUniformLocation "view" shaderProgram
   projection <- getUniformLocation "projection" shaderProgram
+  lightPos   <- getUniformLocation "lightPos" shaderProgram
+  lightColor <- getUniformLocation "lightColor" shaderProgram
   projP      <- malloc
   modelP     <- malloc
   viewP      <- malloc
+  lightPosP     <- malloc
+  lightColorP   <- malloc
   let e1     =  Entity vao1 (V3 1 0 0) (axisAngle (V3 0 0 0) 0) 1
   let e2     =  Entity vao2 (V3 0 0 (-5)) (axisAngle (V3 0 0 0) 0) 1
 
@@ -74,6 +79,8 @@ setupData keyRef mouseRef = do
   let screenHeight = fromIntegral winHeight :: GLfloat
   let projM        = perspective 45 (screenWidth / screenHeight) 0.1 100.0
   applyUniform projM projection projP
+  applyUniformVec (V3 0 3 0) lightPos lightPosP
+  applyUniformVec (V3 1 1 1) lightColor lightColorP
 
   return $ ([e1, e2], RenderData
     { _modelLoc = model
