@@ -1,7 +1,7 @@
-module Graphics.Render where
+module Render.Render where
 
 import Control.Monad.Loops (iterateM_)
-import Control.Monad (unless, forM_)
+import Control.Monad (forM_)
 import Data.IORef (readIORef)
 import Data.Bits ((.|.))
 import Foreign hiding (rotate)
@@ -13,8 +13,9 @@ import Linear hiding (rotate)
 import Entity
 import Light
 import Movement
-import Util.Model
-import Graphics.Uniforms
+import Util.VAO
+import Render.Uniforms
+import Window
 
 applyLights :: Uniforms -> [Light] -> IO ()
 applyLights uniforms lights = forM_ lights $ \(Light pos color) -> do
@@ -29,13 +30,13 @@ applyProjection uniforms window = do
 
 applyViewMove :: Uniforms -> MovementRefs -> Camera -> GLfloat -> IO Camera
 applyViewMove uniforms moveRef oldCamera lastTime = do
-      t     <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
-      mouse <- readIORef (_mouseRef moveRef)
-      keys  <- readIORef (_keysRef moveRef)
-      let camera = updateCamera keys mouse oldCamera lastTime t
-      let viewM  = toViewMatrix camera
-      applyUniformM44 viewM (_view uniforms)
-      return camera
+    t     <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
+    mouse <- readIORef (_mouseRef moveRef)
+    keys  <- readIORef (_keysRef moveRef)
+    let camera = updateCamera keys mouse oldCamera lastTime t
+    let viewM  = toViewMatrix camera
+    applyUniformM44 viewM (_view uniforms)
+    return camera
 
 render :: Uniforms -> Entity -> IO ()
 render uniforms (Entity (VaoModel vaoID numVertices) pos rot scale) = do
@@ -51,15 +52,13 @@ render uniforms (Entity (VaoModel vaoID numVertices) pos rot scale) = do
   glDisableVertexAttribArray 1
   glBindVertexArray 0
 
-initDisplay :: GLFW.Window -> Uniforms -> MovementRefs -> [Entity] -> [Light] -> IO () -> IO ()
-initDisplay window uniforms moveRef entities lights exitFunc= do
+initDisplay :: GLFW.Window -> MovementRefs -> [Entity] -> [Light] -> IO ()
+initDisplay window moveRef entities lights = do
+  uniforms <- initUniforms
   applyProjection uniforms window
   applyLights uniforms lights
-  iterateM_ loop (0.0, initCamera)
-  where
-    loop (lastTime, oldCamera) = do
-      shouldContinue <- not <$> GLFW.windowShouldClose window
-      unless shouldContinue exitFunc
+  flip iterateM_ (0.0, initCamera) $ \(lastTime, oldCamera) -> do
+      shouldTerminate window
       GLFW.pollEvents
       glClearColor 0.2 0.3 0.3 1.0
       glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)

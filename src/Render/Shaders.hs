@@ -1,4 +1,4 @@
-module Graphics.Shaders
+module Render.Shaders
   ( initShaders
   ) where
 

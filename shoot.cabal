@@ -17,10 +17,10 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Util.Common
-                     , Graphics.Shaders
-                     , Graphics.Render
-                     , Graphics.Uniforms
-                     , Util.Model
+                     , Util.VAO
+                     , Render.Shaders
+                     , Render.Uniforms
+                     , Render.Render
                      , Entity
                      , Light
                      , Movement

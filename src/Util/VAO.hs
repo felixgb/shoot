@@ -1,4 +1,4 @@
-module Util.Model where
+module Util.VAO where
 
 import Graphics.GL.Core33
 

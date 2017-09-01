@@ -1,4 +1,4 @@
-module Graphics.Uniforms where
+module Render.Uniforms where
 
 import Foreign hiding (rotate)
 import Foreign.C.String
@@ -6,7 +6,7 @@ import Foreign.C.String
 import Graphics.GL.Core33
 import Linear hiding (rotate)
 
-import Graphics.Shaders
+import Render.Shaders
 
 data UniformM44 = UniformM44
   { _locM4 :: GLint

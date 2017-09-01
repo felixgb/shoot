@@ -4,16 +4,14 @@ import Window
 import Light
 import Entity
 import Movement
-import Graphics.Uniforms
-import Graphics.Render
+import Render.Render
 
 main :: IO ()
 main = do
-  window <- initWindow
-  moveRef <- initMovementRefs
-  setupWindow window moveRef
+  window   <- initWindow
+  moveRef  <- initMovementRefs
   entities <- initEntities
-  uniforms <- initUniforms
-  initDisplay window uniforms moveRef entities [centerLight] terminate
+  setupWindow window moveRef
+  initDisplay window moveRef entities [centerLight]
 
 

@@ -3,7 +3,7 @@ module Entity where
 import Graphics.GL.Core33
 import Linear hiding (rotate)
 
-import Util.Model
+import Util.VAO
 import Parser.ObjectParser
 
 data Entity = Entity

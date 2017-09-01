@@ -1,5 +1,6 @@
 module Window where
 
+import Control.Monad (unless)
 import Control.Exception (throwIO)
 import System.Exit
 
@@ -18,8 +19,10 @@ winHeight = 600
 winTitle :: String
 winTitle = "HELL YEAH"
 
-terminate :: IO ()
-terminate = GLFW.terminate >> exitSuccess
+shouldTerminate :: GLFW.Window -> IO ()
+shouldTerminate window = do
+  shouldContinue <- not <$> GLFW.windowShouldClose window
+  unless shouldContinue (GLFW.terminate >> exitSuccess)
 
 initWindow :: IO GLFW.Window
 initWindow = do
