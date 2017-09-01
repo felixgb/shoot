@@ -27,11 +27,19 @@ type KeysRef = IORef (Set GLFW.Key)
 
 type MouseRef = IORef MouseInfo
 
+data MovementRefs = MovementRefs
+  { _mouseRef :: MouseRef
+  , _keysRef  :: KeysRef
+  }
+
 initMouse :: MouseInfo
 initMouse = MouseInfo Nothing (0, (-90)) (V3 0 0 (-1))
 
 initCamera :: Camera
 initCamera = Camera (V3 0 0 3) (V3 0 0 (-1)) (V3 0 1 0)
+
+initMovementRefs :: IO MovementRefs
+initMovementRefs = MovementRefs <$> newIORef initMouse <*> newIORef Set.empty
 
 keyCallback :: KeysRef -> GLFW.KeyCallback
 keyCallback ref window key _ keyState _ = do

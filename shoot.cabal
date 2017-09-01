@@ -19,6 +19,7 @@ library
   exposed-modules:     Util.Common
                      , Graphics.Shaders
                      , Graphics.Render
+                     , Graphics.Uniforms
                      , Util.Model
                      , Entity
                      , Light

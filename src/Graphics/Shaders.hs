@@ -11,7 +11,6 @@ import Graphics.GL.Core33
 import qualified Util.Common as U
 
 -- | Get the string from the program and throw the error with the data
-
 handleError :: (Num t, Enum a1, Enum b, Exception e, Integral a2, Storable a1, Storable a2) => (t -> Ptr a2 -> Ptr a1 -> IO a) -> ([b] -> e) -> IO b1
 handleError getLog err = do
   let infoLength = 512 :: Int

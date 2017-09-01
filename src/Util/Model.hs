@@ -4,12 +4,7 @@ import Graphics.GL.Core33
 
 import Foreign
 
-data Object = Object
-  { vertices      :: [GLfloat]
-  , colors        :: [GLfloat]
-  , vertexNormals :: [GLfloat]
-  , indices       :: [GLuint]
-  } deriving (Show)
+import Parser.ObjectParser
 
 data VaoModel = VaoModel
   { _vaoID       :: GLuint

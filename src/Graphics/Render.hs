@@ -1,80 +1,71 @@
 module Graphics.Render where
 
 import Control.Monad.Loops (iterateM_)
-import Control.Monad (unless)
+import Control.Monad (unless, forM_)
 import Data.IORef (readIORef)
 import Data.Bits ((.|.))
 import Foreign hiding (rotate)
-import Foreign.C.String
-import System.Exit
 
 import qualified Graphics.UI.GLFW as GLFW
 import Graphics.GL.Core33
 import Linear hiding (rotate)
 
 import Entity
+import Light
 import Movement
 import Util.Model
+import Graphics.Uniforms
 
-terminate :: IO ()
-terminate = GLFW.terminate >> exitSuccess
+applyLights :: Uniforms -> [Light] -> IO ()
+applyLights uniforms lights = forM_ lights $ \(Light pos color) -> do
+  applyUniformV3 pos (_ulightPos uniforms)
+  applyUniformV3 color (_ulightColor uniforms)
 
-data RenderData = RenderData
-  { _modelLoc :: GLint
-  , _modelP   :: Ptr (V4 (V4 GLfloat))
-  , _viewLoc  :: GLint
-  , _viewP    :: Ptr (V4 (V4 GLfloat))
-  , _keysRef  :: KeysRef
-  , _mouseRef :: MouseRef
-  }
+applyProjection :: Uniforms -> GLFW.Window -> IO ()
+applyProjection uniforms window = do
+  (x, y) <- GLFW.getFramebufferSize window
+  let projM = perspective 45 (fromIntegral x / fromIntegral y) 0.1 100.0
+  applyUniformM44 projM (_proj uniforms)
 
-getUniformLocation :: String -> GLuint -> IO GLint
-getUniformLocation name prog = withCString name (glGetUniformLocation prog)
+applyViewMove :: Uniforms -> MovementRefs -> Camera -> GLfloat -> IO Camera
+applyViewMove uniforms moveRef oldCamera lastTime = do
+      t     <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
+      mouse <- readIORef (_mouseRef moveRef)
+      keys  <- readIORef (_keysRef moveRef)
+      let camera = updateCamera keys mouse oldCamera lastTime t
+      let viewM  = toViewMatrix camera
+      applyUniformM44 viewM (_view uniforms)
+      return camera
 
-applyUniform :: M44 GLfloat -> GLint -> (Ptr (V4 (V4 GLfloat))) -> IO ()
-applyUniform mat loc mem = do
-  poke mem (transpose mat)
-  glUniformMatrix4fv loc 1 GL_FALSE (castPtr mem)
-
-applyUniformVec :: V3 GLfloat -> GLint -> Ptr (V3 GLfloat) -> IO ()
-applyUniformVec vec loc mem = do
-  poke mem vec
-  glUniform3fv loc 1 (castPtr mem)
-
-render :: RenderData -> Entity -> IO ()
-render rd (Entity (VaoModel vaoID numVertices) pos rot scale) = do
+render :: Uniforms -> Entity -> IO ()
+render uniforms (Entity (VaoModel vaoID numVertices) pos rot scale) = do
   let modelM = mkTransformation rot pos
-  applyUniform modelM (_modelLoc rd) (_modelP rd)
+  applyUniformM44 modelM (_model uniforms)
   glBindVertexArray vaoID
+  -- vertices in attr 0
   glEnableVertexAttribArray 0
+  -- vertex normals in attr 1
   glEnableVertexAttribArray 1
   glDrawElements GL_TRIANGLES numVertices GL_UNSIGNED_INT nullPtr
   glDisableVertexAttribArray 0
   glDisableVertexAttribArray 1
   glBindVertexArray 0
 
-displayLoop :: GLFW.Window -> RenderData -> [Entity] -> IO ()
-displayLoop window renderData entities = iterateM_ loop (0.0, initCamera)
+initDisplay :: GLFW.Window -> Uniforms -> MovementRefs -> [Entity] -> [Light] -> IO () -> IO ()
+initDisplay window uniforms moveRef entities lights exitFunc= do
+  applyProjection uniforms window
+  applyLights uniforms lights
+  iterateM_ loop (0.0, initCamera)
   where
     loop (lastTime, oldCamera) = do
       shouldContinue <- not <$> GLFW.windowShouldClose window
-      unless shouldContinue terminate
-
+      unless shouldContinue exitFunc
       GLFW.pollEvents
       glClearColor 0.2 0.3 0.3 1.0
       glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
-
+      camera <- applyViewMove uniforms moveRef oldCamera lastTime
       t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
-      keys <- readIORef (_keysRef renderData)
-      mouse <- readIORef (_mouseRef renderData)
-      let camera = updateCamera keys mouse oldCamera lastTime t
-      let viewM = toViewMatrix camera
-
-      -- assign uniforms
-      applyUniform viewM (_viewLoc renderData) (_viewP renderData)
-
       let es  = transformEntities t entities
-
-      mapM_ (render renderData) es
+      mapM_ (render uniforms) es
       GLFW.swapBuffers window
       return (t, camera)
