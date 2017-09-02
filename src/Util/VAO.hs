@@ -62,6 +62,7 @@ loadToVao (Object vs _ vns is) = do
 
   -- unbind this VAO
   glBindVertexArray 0
+  putStrLn $ show vao
   return $ VaoModel vao (fromIntegral $ length is)
   where
     floatSize        = (fromIntegral $ sizeOf (0.0 :: GLfloat)) :: GLsizei

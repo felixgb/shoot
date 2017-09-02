@@ -21,11 +21,12 @@ library
                      , Render.Shaders
                      , Render.Uniforms
                      , Render.Render
+                     , Parser.Lexer
+                     , Parser.ObjectParser
+                     , Terrain.Terrain
                      , Entity
                      , Light
                      , Movement
-                     , Parser.Lexer
-                     , Parser.ObjectParser
                      , Window
   build-depends:       base >= 4.7 && < 5
                      , mtl
