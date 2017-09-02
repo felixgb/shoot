@@ -5,13 +5,15 @@ import Light
 import Entity
 import Movement
 import Render.Render
+import Render.Uniforms
 
 main :: IO ()
 main = do
   window   <- initWindow
   moveRef  <- initMovementRefs
-  entities <- initEntities
   setupWindow window moveRef
-  initDisplay window moveRef entities [centerLight]
+  uniforms <- initUniforms
+  entities <- initEntities
+  initDisplay window uniforms moveRef entities [centerLight]
 
 

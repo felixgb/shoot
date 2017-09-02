@@ -21,7 +21,7 @@ translate:: V3 GLfloat -> Entity -> Entity
 translate amount entity = entity { _position = (_position entity) + amount }
 
 transformEntities :: GLfloat -> [Entity] -> [Entity]
-transformEntities delta (e1 : _) = [rotate (delta * 3) (V3 0 1 0) e1]
+transformEntities delta (e1 : xs) = (rotate (delta * 3) (V3 0 1 0) e1) : xs
 transformEntities _ _ = error "transforming not implemented"
 
 loadEntityFromFile :: FilePath -> V3 GLfloat -> Quaternion GLfloat -> GLfloat -> IO Entity
@@ -32,10 +32,10 @@ loadEntityFromFile path pos rot scale = do
 loadTerrain :: IO Entity
 loadTerrain = do
   vao <- flatTerrain >>= loadToVao
-  return $ Entity vao (V3 0 0 0) (axisAngle (V3 0 0 0) 1) 1
+  return $ Entity vao (V3 (-25) 0 (-25)) (axisAngle (V3 0 0 0) 1) 1
 
 initEntities :: IO [Entity]
 initEntities = do
-  -- t <- loadTerrain
+  t <- loadTerrain
   e1 <- loadEntityFromFile "resources/teapot.obj" (V3 0 0 0) (axisAngle (V3 0 0 0) 1) 1
-  return [e1]
+  return [e1, t]

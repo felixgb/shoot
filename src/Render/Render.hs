@@ -52,9 +52,8 @@ render uniforms (Entity (VaoModel vaoID numVertices) pos rot scale) = do
   glDisableVertexAttribArray 1
   glBindVertexArray 0
 
-initDisplay :: GLFW.Window -> MovementRefs -> [Entity] -> [Light] -> IO ()
-initDisplay window moveRef entities lights = do
-  uniforms <- initUniforms
+initDisplay :: GLFW.Window -> Uniforms -> MovementRefs -> [Entity] -> [Light] -> IO ()
+initDisplay window uniforms moveRef entities lights = do
   applyProjection uniforms window
   applyLights uniforms lights
   flip iterateM_ (0.0, initCamera) $ \(lastTime, oldCamera) -> do

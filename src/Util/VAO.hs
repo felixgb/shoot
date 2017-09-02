@@ -6,6 +6,7 @@ import Foreign
 
 import Parser.ObjectParser
 
+-- UNIFROMS HAVE TO BE LOADED BEFORE ANYTHING HAPPENS HERE!!!!!!!!!!!!!!!!!!!!
 data VaoModel = VaoModel
   { _vaoID       :: GLuint
   , _numVertices :: GLsizei
@@ -29,7 +30,8 @@ loadToVao (Object vs _ vns is) = do
   vaoP <- malloc
 
   -- 1 is the number of vertex array object names to generate
-  -- vaoP is the array where generate vertex array object names are to be stored
+  -- vaoP is the array where generate vertex array object names are to be
+  -- stored
   glGenVertexArrays 1 vaoP
   vao <- peek vaoP
 
@@ -62,7 +64,6 @@ loadToVao (Object vs _ vns is) = do
 
   -- unbind this VAO
   glBindVertexArray 0
-  putStrLn $ show vao
   return $ VaoModel vao (fromIntegral $ length is)
   where
     floatSize        = (fromIntegral $ sizeOf (0.0 :: GLfloat)) :: GLsizei

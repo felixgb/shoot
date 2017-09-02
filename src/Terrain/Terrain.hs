@@ -15,11 +15,6 @@ type Terrain = IOArray (Int, Int) (GLfloat, GLfloat, GLfloat)
 newGrid :: Int -> Int -> IO Terrain
 newGrid xsize zsize = newArray ((0, 0), (xsize, zsize)) (0.0, 0.0, 0.0)
 
-getAt = do
-  grid <- newGrid 10 10
-  e <- readArray grid (0, 5)
-  return e
-
 triangleStrip :: GLuint -> GLuint -> [(GLuint, GLuint, GLuint)]
 triangleStrip len y = concat $ unfoldr build 0
   where
@@ -36,24 +31,26 @@ tuple3Flatten (a, b, c) = [a, b, c]
 
 buildTerrain :: IO Terrain
 buildTerrain = do
-  terrain <- newGrid 10 10
-  forM_ [0..9] $ \y -> do
-    forM_ [0..9] $ \x -> do
-      writeArray terrain (x, y) ((fromIntegral x) * scale, 0.0, (fromIntegral y) * scale)
+  terrain <- newGrid 100 100
+  forM_ [0..100] $ \y -> do
+    forM_ [0..100] $ \x -> do
+      writeArray terrain (x, y) ((fromIntegral x) * scale, (-1.0), (fromIntegral y) * scale)
   return terrain
 
 terrainToObj :: Terrain -> IO Object
 terrainToObj terrain = do
    vs <- getElems terrain
    let vns = map (\_ -> (0, 1, 0)) vs
-   let is = triangleGrid 10
+   let is = triangleGrid 100
+   putStrLn (show $ length is)
+   putStrLn (show $ length vs)
    return $ Object (concatMap tuple3Flatten vs) [] (concatMap tuple3Flatten vns) (concatMap tuple3Flatten is)
 
 flatTerrain :: IO Object
 flatTerrain = buildTerrain >>= terrainToObj
 
 scale :: GLfloat
-scale = 20.0
+scale = 0.5
 
 to2d :: [a] -> [[a]]
 to2d [] = []
