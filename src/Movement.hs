@@ -34,6 +34,8 @@ data MovementRefs = MovementRefs
   , _keysRef  :: KeysRef
   }
 
+type ClickRef = IORef (Set GLFW.MouseButton)
+
 initMouse :: MouseInfo
 initMouse = MouseInfo Nothing (0, (-90)) (V3 0 0 (-1))
 
@@ -42,6 +44,9 @@ initCamera = Camera (V3 0 0 3) (V3 0 0 (-1)) (V3 0 1 0) 0
 
 initMovementRefs :: IO MovementRefs
 initMovementRefs = MovementRefs <$> newIORef initMouse <*> newIORef Set.empty
+
+initClickRef :: IO ClickRef
+initClickRef = newIORef Set.empty
 
 keyCallback :: KeysRef -> GLFW.KeyCallback
 keyCallback ref window key _ keyState _ = do
@@ -55,8 +60,12 @@ keyCallback ref window key _ keyState _ = do
 mouseCallback :: MouseRef -> GLFW.CursorPosCallback
 mouseCallback ref _ xPos yPos = modifyIORef ref $ \info -> (mouseFunc xPos yPos info)
 
-clickCallback :: GLFW.MouseButtonCallback
-clickCallback window button action mods = putStrLn (show $ (action, button))
+clickCallback :: ClickRef -> GLFW.MouseButtonCallback
+clickCallback ref window button action mods = do
+  case action of
+    GLFW.MouseButtonState'Pressed -> modifyIORef ref (Set.insert button)
+    GLFW.MouseButtonState'Released -> modifyIORef ref (Set.delete button)
+    _ -> return ()
 
 mouseFunc :: Double -> Double -> MouseInfo -> MouseInfo
 mouseFunc xPos yPos oldInfo = MouseInfo (Just (xPos, yPos)) (newPitch, newYaw) front

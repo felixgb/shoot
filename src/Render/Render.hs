@@ -4,6 +4,8 @@ import Control.Monad.Loops (iterateM_)
 import Control.Monad (forM_)
 import Data.IORef (readIORef)
 import Data.Bits ((.|.))
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Foreign hiding (rotate)
 
 import qualified Graphics.UI.GLFW as GLFW
@@ -38,9 +40,16 @@ applyViewMove uniforms moveRef oldCamera lastTime = do
     applyUniformM44 viewM (_view uniforms)
     return camera
 
-render :: Uniforms -> Entity -> IO ()
-render uniforms (Entity (VaoModel vaoID numVertices) pos rot scale mode) = do
-  let modelM = mkTransformation rot pos
+applyClick :: Camera -> EntityInfo -> ClickRef -> IO [Entity]
+applyClick cam info ref = do
+  buttons <- readIORef ref
+  case GLFW.MouseButton'1 `Set.member` buttons of
+    True -> return [newBullet info (_pos cam) (_front cam)]
+    False -> return []
+
+render :: Uniforms -> EntityInfo -> IO ()
+render uniforms (EntityInfo (VaoModel vaoID numVertices) pos rot scale mode) = do
+  let modelM = (mkTransformation rot pos) !*! (scaleMatrix scale)
   applyUniformM44 modelM (_model uniforms)
   glPolygonMode GL_FRONT_AND_BACK mode
   glBindVertexArray vaoID
@@ -53,18 +62,20 @@ render uniforms (Entity (VaoModel vaoID numVertices) pos rot scale mode) = do
   glDisableVertexAttribArray 1
   glBindVertexArray 0
 
-initDisplay :: GLFW.Window -> Uniforms -> MovementRefs -> [Entity] -> [Light] -> IO ()
-initDisplay window uniforms moveRef entities lights = do
+initDisplay :: GLFW.Window -> Uniforms -> MovementRefs -> ClickRef -> [Entity] -> [Light] -> IO ()
+initDisplay window uniforms moveRef clickRef entities lights = do
   applyProjection uniforms window
   applyLights uniforms lights
-  flip iterateM_ (0.0, initCamera) $ \(lastTime, oldCamera) -> do
+  bulletInfo <- loadBulletInfo
+  flip iterateM_ (0.0, initCamera, entities) $ \(lastTime, oldCamera, es) -> do
     shouldTerminate window
     GLFW.pollEvents
     glClearColor 0.0 0.0 0.0 1.0
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
     camera <- applyViewMove uniforms moveRef oldCamera lastTime
     t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
-    let es  = transformEntities t entities
-    mapM_ (render uniforms) es
+    shootems <- applyClick camera bulletInfo clickRef
+    let es' = map (transformEntity t) (es ++ shootems)
+    mapM_ (render uniforms . getInfo) es'
     GLFW.swapBuffers window
-    return (t, camera)
+    return (t, camera, es')

@@ -38,13 +38,13 @@ initWindow = do
     Just window -> return window
     Nothing     -> throwIO WindowCreationError
 
-setupWindow :: GLFW.Window -> MovementRefs -> IO ()
-setupWindow window (MovementRefs mouseRef keyRef) = do
+setupWindow :: GLFW.Window -> MovementRefs -> ClickRef -> IO ()
+setupWindow window (MovementRefs mouseRef keyRef) clickRef = do
   (x, y) <- GLFW.getFramebufferSize window
   GLFW.setCursorInputMode window GLFW.CursorInputMode'Disabled
   GLFW.setKeyCallback window (Just $ keyCallback keyRef)
   GLFW.setCursorPosCallback window (Just $ mouseCallback mouseRef)
-  GLFW.setMouseButtonCallback window (Just $ clickCallback)
+  GLFW.setMouseButtonCallback window (Just $ clickCallback clickRef)
   GLFW.makeContextCurrent (Just window)
   glEnable GL_DEPTH_TEST
   glViewport 0 0 (fromIntegral x) (fromIntegral y)

@@ -11,9 +11,8 @@ main :: IO ()
 main = do
   window   <- initWindow
   moveRef  <- initMovementRefs
-  setupWindow window moveRef
+  clickRef <- initClickRef
+  setupWindow window moveRef clickRef
   uniforms <- initUniforms
   entities <- initEntities
-  initDisplay window uniforms moveRef entities [centerLight]
-
-
+  initDisplay window uniforms moveRef clickRef entities [centerLight]
