@@ -4,7 +4,6 @@ import Control.Monad.Loops (iterateM_)
 import Control.Monad (forM_)
 import Data.IORef (readIORef)
 import Data.Bits ((.|.))
-import Data.Set (Set)
 import qualified Data.Set as Set
 import Foreign hiding (rotate)
 
@@ -12,7 +11,8 @@ import qualified Graphics.UI.GLFW as GLFW
 import Graphics.GL.Core33
 import Linear hiding (rotate)
 
-import Entity
+import Entity.Entity
+import Entity.Collision
 import Light
 import Movement
 import Util.VAO
@@ -40,9 +40,10 @@ applyViewMove uniforms moveRef oldCamera lastTime = do
     applyUniformM44 viewM (_view uniforms)
     return camera
 
-applyClick :: Camera -> EntityInfo -> ClickRef -> IO [Entity]
+applyClick :: Camera -> (EntityInfo, AABB) -> ClickRef -> IO [Entity]
 applyClick cam info ref = do
   buttons <- readIORef ref
+  -- check dif lasttime current time is above some thresh to limit ROF
   case GLFW.MouseButton'1 `Set.member` buttons of
     True -> return [newBullet info (_pos cam) (_front cam)]
     False -> return []
@@ -75,7 +76,9 @@ initDisplay window uniforms moveRef clickRef entities lights = do
     camera <- applyViewMove uniforms moveRef oldCamera lastTime
     t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
     shootems <- applyClick camera bulletInfo clickRef
-    let es' = map (transformEntity t) (es ++ shootems)
+    let es' = shootems ++ es
+    -- ... get the current entity and check collisions against all else
+    let es'' = map (transformEntity t shootems) es'
     mapM_ (render uniforms . getInfo) es'
     GLFW.swapBuffers window
-    return (t, camera, es')
+    return (t, camera, es'')

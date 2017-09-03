@@ -2,8 +2,8 @@ module Main where
 
 import Window
 import Light
-import Entity
 import Movement
+import Entity.Entity
 import Render.Render
 import Render.Uniforms
 

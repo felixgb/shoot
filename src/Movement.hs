@@ -6,7 +6,6 @@ import Data.Maybe (fromMaybe)
 import Data.Fixed (mod')
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Debug.Trace
 
 import qualified Graphics.UI.GLFW as GLFW
 import Graphics.GL.Core33

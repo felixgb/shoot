@@ -10,10 +10,10 @@ import Parser.Lexer
 import Util.Common
 
 data Object = Object
-  { vertices      :: [GLfloat]
-  , colors        :: [GLfloat]
-  , vertexNormals :: [GLfloat]
-  , indices       :: [GLuint]
+  { _vertices      :: [GLfloat]
+  , _colors        :: [GLfloat]
+  , _vertexNormals :: [GLfloat]
+  , _indices       :: [GLuint]
   } deriving (Show)
 
 type ObjectState = StateT Object ThrowsError
@@ -27,13 +27,13 @@ parseObject tks = case head tks of
   _    -> parseObject (tail tks)
 
 insertVertex :: [GLfloat] -> Object -> Object
-insertVertex vs obj = obj { vertices = vs ++ vertices obj }
+insertVertex vs obj = obj { _vertices = vs ++ _vertices obj }
 
 insertVertexNormal :: [GLfloat] -> Object -> Object
-insertVertexNormal vns obj = obj { vertexNormals = vns ++ vertexNormals obj }
+insertVertexNormal vns obj = obj { _vertexNormals = vns ++ _vertexNormals obj }
 
 insertIndex :: [GLuint] -> Object -> Object
-insertIndex is obj = obj { indices = is ++ indices obj }
+insertIndex is obj = obj { _indices = is ++ _indices obj }
 
 parseVertex :: [Token] -> ObjectState [Token]
 parseVertex (TkV : TkFloating x : TkFloating y : TkFloating z : ts) = modify (insertVertex [x, y, z]) >> return ts
