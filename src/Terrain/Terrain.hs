@@ -28,7 +28,7 @@ triangleStrip len y = concat $ unfoldr build 0
     build i
       | i > (len - 1) = Nothing
       | otherwise = Just (tri (i + y * x), i + 1)
-    tri i = [V3 i (i + 1) (i + x), V3 (i + 1) (i + x) (i + 1 + x)]
+    tri i = [V3 i (i + x) (i + 1), V3 (i + 1) (i + x) (i + 1 + x)]
 
 triangleGrid :: GLuint -> [Face]
 triangleGrid size = concatMap (triangleStrip size) [0..size - 1]
@@ -52,21 +52,28 @@ terrainToObj terrain = do
    vns <- VM.new (V.length vs)
    let is = triangleGrid (fromIntegral maxSize)
    -- compute vector normals
-   mapM_ (surfaceNormal vs vns) is
+   mapM_ (writeSurfaceNormal vs vns) is
    vnsI <- V.freeze vns
    return $ Object (concatMap vecFlatten $ V.toList vs) [] (concatMap vecFlatten $ V.toList vnsI) (concatMap vecFlatten is)
 
 flatTerrain :: IO Object
 flatTerrain = buildTerrain >>= terrainToObj
 
-surfaceNormal :: V.Vector Vertex -> VM.IOVector Vertex -> Face -> IO ()
-surfaceNormal vs vns (V3 i1 i2 i3) = do
+writeSurfaceNormal :: V.Vector Vertex -> VM.IOVector Vertex -> Face -> IO ()
+writeSurfaceNormal vs vns (V3 i1 i2 i3) = do
   let v1 = vs V.! (fromIntegral i1)
   let v2 = vs V.! (fromIntegral i2)
   let v3 = vs V.! (fromIntegral i3)
   let u = v1 - v3
   let v = v1 - v2
-  let out = normalize $ v `cross` u
+  let out = normalize $ u `cross` v
   VM.write vns (fromIntegral i1) out
   VM.write vns (fromIntegral i2) out
   VM.write vns (fromIntegral i3) out
+
+surfaceNormal :: V3 Vertex -> V3 Vertex -> V3 Vertex -> V3 Vertex
+surfaceNormal a b c = normalize out
+  where
+    u = a - b
+    v = a - c
+    out = normalize $ u `cross` v

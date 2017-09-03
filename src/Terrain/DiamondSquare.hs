@@ -52,7 +52,7 @@ shapes func size level = map (func start) mps
     mps = [(x, y) | x <- (gridMidpoints size level), y <- (gridMidpoints size level)]
 
 roughness :: GLfloat
-roughness = 0.7
+roughness = 0.2
 
 drawShape :: Grid -> GLfloat -> Shape -> IO ()
 drawShape grid offset (mp, ps) = do
@@ -80,7 +80,7 @@ divide grid level = do
 diamondSquare :: IO Grid
 diamondSquare = do
   grid <- newArray ((0, 0), (maxSize, maxSize)) 0.0 :: IO Grid
-  writeArray grid (0, 0) 50.0
+  writeArray grid (0, 0) 200.0
   writeArray grid (maxSize, 0) 25.0
   writeArray grid (maxSize, maxSize) 0.0
   writeArray grid (0, maxSize) 0.0
