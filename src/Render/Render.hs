@@ -55,6 +55,7 @@ render uniforms (Entity (VaoModel vaoID numVertices) pos rot scale mode) = do
 
 initDisplay :: GLFW.Window -> Uniforms -> MovementRefs -> [Entity] -> [Light] -> IO ()
 initDisplay window uniforms moveRef entities lights = do
+  applyProjection uniforms window
   applyLights uniforms lights
   flip iterateM_ (0.0, initCamera) $ \(lastTime, oldCamera) -> do
     shouldTerminate window
