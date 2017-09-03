@@ -40,4 +40,4 @@ initEntities :: IO [Entity]
 initEntities = do
   t <- loadTerrain
   e1 <- loadEntityFromFile "resources/teapot.obj" (V3 0 0 0) (axisAngle (V3 0 0 0) 1) 1
-  return [t, e1]
+  return [e1, t]

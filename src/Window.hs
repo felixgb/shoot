@@ -44,6 +44,7 @@ setupWindow window (MovementRefs mouseRef keyRef) = do
   GLFW.setCursorInputMode window GLFW.CursorInputMode'Disabled
   GLFW.setKeyCallback window (Just $ keyCallback keyRef)
   GLFW.setCursorPosCallback window (Just $ mouseCallback mouseRef)
+  GLFW.setMouseButtonCallback window (Just $ clickCallback)
   GLFW.makeContextCurrent (Just window)
   glEnable GL_DEPTH_TEST
   glViewport 0 0 (fromIntegral x) (fromIntegral y)

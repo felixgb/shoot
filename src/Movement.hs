@@ -53,6 +53,9 @@ keyCallback ref window key _ keyState _ = do
 mouseCallback :: MouseRef -> GLFW.CursorPosCallback
 mouseCallback ref _ xPos yPos = modifyIORef ref $ \info -> (mouseFunc xPos yPos info)
 
+clickCallback :: GLFW.MouseButtonCallback
+clickCallback window button action mods = putStrLn (show $ (action, button))
+
 mouseFunc :: Double -> Double -> MouseInfo -> MouseInfo
 mouseFunc xPos yPos oldInfo = MouseInfo (Just (xPos, yPos)) (newPitch, newYaw) front
   where
