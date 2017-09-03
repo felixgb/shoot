@@ -10,4 +10,7 @@ data Light = Light
   }
 
 centerLight :: Light
-centerLight = Light (V3 3 10 0) (V3 1 1 1)
+centerLight = Light (V3 1000 1000 1000) (V3 0.4 1 0.4)
+
+moveLightTo :: V3 GLfloat -> Light -> Light
+moveLightTo vec light = light { _lightPos = vec }

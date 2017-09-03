@@ -3,48 +3,70 @@ module Terrain.Terrain where
 import Control.Monad (forM_)
 import Data.Array.IO
 import Data.List (unfoldr)
+import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as VM
 
 import Graphics.GL.Core33
-import Terrain.DiamondSquare
+import Linear
 
 import Parser.ObjectParser
+import Terrain.DiamondSquare
 
-type Terrain = IOArray (Int, Int) (GLfloat, GLfloat, GLfloat)
+type Vertex = V3 GLfloat
+
+type Face = V3 GLuint
+
+type Terrain = IOArray (Int, Int) Vertex
 
 mapScale :: GLfloat
-mapScale = 1.0
+mapScale = 10.0
 
-triangleStrip :: GLuint -> GLuint -> [(GLuint, GLuint, GLuint)]
+triangleStrip :: GLuint -> GLuint -> [Face]
 triangleStrip len y = concat $ unfoldr build 0
   where
     x = len + 1
     build i
       | i > (len - 1) = Nothing
-      | otherwise = Just ((tri (i + (y * x))), i + 1)
-    tri i = [(i, i + 1, i + x), (i + 1, i + x, i + 1 + x)]
+      | otherwise = Just (tri (i + y * x), i + 1)
+    tri i = [V3 i (i + 1) (i + x), V3 (i + 1) (i + x) (i + 1 + x)]
 
-triangleGrid :: GLuint -> [(GLuint, GLuint, GLuint)]
+triangleGrid :: GLuint -> [Face]
 triangleGrid size = concatMap (triangleStrip size) [0..size - 1]
 
-tuple3Flatten :: (a, a, a) -> [a]
-tuple3Flatten (a, b, c) = [a, b, c]
+vecFlatten :: V3 a -> [a]
+vecFlatten (V3 a b c) = [a, b, c]
 
 buildTerrain :: IO Terrain
 buildTerrain = do
-  terrain <- newArray ((0, 0), (maxSize, maxSize)) (0.0, 0.0, 0.0) :: IO Terrain
+  terrain <- newArray ((0, 0), (maxSize, maxSize)) (V3 0.0 0.0 0.0) :: IO Terrain
   grid <- diamondSquare
   forM_ [0..maxSize] $ \y -> do
     forM_ [0..maxSize] $ \x -> do
       val <- readArray grid (x, y)
-      writeArray terrain (x, y) ((fromIntegral x) * mapScale, val, (fromIntegral y) * mapScale)
+      writeArray terrain (x, y) $ V3 ((fromIntegral x) * mapScale) val ((fromIntegral y) * mapScale)
   return terrain
 
 terrainToObj :: Terrain -> IO Object
 terrainToObj terrain = do
-   vs <- getElems terrain
-   let vns = map (\_ -> (0, 1, 0)) vs
+   vs <- V.fromList <$> getElems terrain
+   vns <- VM.new (V.length vs)
    let is = triangleGrid (fromIntegral maxSize)
-   return $ Object (concatMap tuple3Flatten vs) [] (concatMap tuple3Flatten vns) (concatMap tuple3Flatten is)
+   -- compute vector normals
+   mapM_ (surfaceNormal vs vns) is
+   vnsI <- V.freeze vns
+   return $ Object (concatMap vecFlatten $ V.toList vs) [] (concatMap vecFlatten $ V.toList vnsI) (concatMap vecFlatten is)
 
 flatTerrain :: IO Object
 flatTerrain = buildTerrain >>= terrainToObj
+
+surfaceNormal :: V.Vector Vertex -> VM.IOVector Vertex -> Face -> IO ()
+surfaceNormal vs vns (V3 i1 i2 i3) = do
+  let v1 = vs V.! (fromIntegral i1)
+  let v2 = vs V.! (fromIntegral i2)
+  let v3 = vs V.! (fromIntegral i3)
+  let u = v1 - v3
+  let v = v1 - v2
+  let out = normalize $ v `cross` u
+  VM.write vns (fromIntegral i1) out
+  VM.write vns (fromIntegral i2) out
+  VM.write vns (fromIntegral i3) out

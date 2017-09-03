@@ -32,7 +32,7 @@ loadEntityFromFile path pos rot scale = do
 loadTerrain :: IO Entity
 loadTerrain = do
   vao <- flatTerrain >>= loadToVao
-  return $ Entity vao (V3 (-250) (-10) (-250)) (axisAngle (V3 0 0 0) 1) 1
+  return $ Entity vao (V3 (-500) (-50) (-500)) (axisAngle (V3 0 0 0) 1) 1
 
 initEntities :: IO [Entity]
 initEntities = do

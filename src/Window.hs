@@ -11,10 +11,10 @@ import Util.Common
 import Movement
 
 winWidth :: Int
-winWidth = 800
+winWidth = 1920
 
 winHeight :: Int
-winHeight = 600
+winHeight = 1080
 
 winTitle :: String
 winTitle = "HELL YEAH"

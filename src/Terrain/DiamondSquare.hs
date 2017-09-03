@@ -1,8 +1,6 @@
 module Terrain.DiamondSquare where
 
 import Control.Monad (unless)
-import Debug.Trace
-import Data.List
 
 import Graphics.GL.Core33
 
@@ -13,7 +11,8 @@ type Grid = IOArray (Int, Int) (GLfloat)
 
 type Shape = ((Int, Int), [(Int, Int)])
 
-maxSize = 512
+maxSize :: Int
+maxSize = 64
 
 inGrid :: Int -> (Int, Int) -> Bool
 inGrid size (x, y) = x >= 0 && y >= 0 && x <= size && y <= size
@@ -52,7 +51,8 @@ shapes func size level = map (func start) mps
     start = size `div` toDivide
     mps = [(x, y) | x <- (gridMidpoints size level), y <- (gridMidpoints size level)]
 
-roughness = 0.08
+roughness :: GLfloat
+roughness = 0.7
 
 drawShape :: Grid -> GLfloat -> Shape -> IO ()
 drawShape grid offset (mp, ps) = do
@@ -80,9 +80,9 @@ divide grid level = do
 diamondSquare :: IO Grid
 diamondSquare = do
   grid <- newArray ((0, 0), (maxSize, maxSize)) 0.0 :: IO Grid
-  writeArray grid (0, 0) (-20.0)
-  writeArray grid (maxSize, 0) 0.0
+  writeArray grid (0, 0) 50.0
+  writeArray grid (maxSize, 0) 25.0
   writeArray grid (maxSize, maxSize) 0.0
-  writeArray grid (0, maxSize) (-20.0)
+  writeArray grid (0, maxSize) 0.0
   divide grid 1
   return grid

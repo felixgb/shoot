@@ -57,13 +57,13 @@ initDisplay window uniforms moveRef entities lights = do
   applyProjection uniforms window
   applyLights uniforms lights
   flip iterateM_ (0.0, initCamera) $ \(lastTime, oldCamera) -> do
-      shouldTerminate window
-      GLFW.pollEvents
-      glClearColor 0.2 0.3 0.3 1.0
-      glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
-      camera <- applyViewMove uniforms moveRef oldCamera lastTime
-      t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
-      let es  = transformEntities t entities
-      mapM_ (render uniforms) es
-      GLFW.swapBuffers window
-      return (t, camera)
+    shouldTerminate window
+    GLFW.pollEvents
+    glClearColor 0.2 0.3 0.3 1.0
+    glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
+    camera <- applyViewMove uniforms moveRef oldCamera lastTime
+    t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
+    let es  = transformEntities t entities
+    mapM_ (render uniforms) es
+    GLFW.swapBuffers window
+    return (t, camera)
