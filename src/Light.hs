@@ -10,4 +10,4 @@ data Light = Light
   }
 
 centerLight :: Light
-centerLight = Light (V3 3 3 0) (V3 1 1 1)
+centerLight = Light (V3 3 10 0) (V3 1 1 1)

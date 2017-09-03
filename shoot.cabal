@@ -24,6 +24,7 @@ library
                      , Parser.Lexer
                      , Parser.ObjectParser
                      , Terrain.Terrain
+                     , Terrain.DiamondSquare
                      , Entity
                      , Light
                      , Movement
@@ -38,6 +39,7 @@ library
                      , containers
                      , array
                      , monad-loops
+                     , random
   build-tools:         alex
   default-language:    Haskell2010
   ghc-options:         -Wall

@@ -88,5 +88,5 @@ updateCamera :: Set GLFW.Key -> MouseInfo -> Camera -> GLfloat -> GLfloat -> Cam
 updateCamera keys mouse oldCamera elapsedTime currentTime = cameraTemp { _front = _frontVec mouse }
   where
     deltaTime   = currentTime - elapsedTime
-    cameraSpeed = deltaTime * 5
+    cameraSpeed = deltaTime * 20
     cameraTemp  = keyFunc cameraSpeed oldCamera keys

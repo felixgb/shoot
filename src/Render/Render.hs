@@ -25,7 +25,7 @@ applyLights uniforms lights = forM_ lights $ \(Light pos color) -> do
 applyProjection :: Uniforms -> GLFW.Window -> IO ()
 applyProjection uniforms window = do
   (x, y) <- GLFW.getFramebufferSize window
-  let projM = perspective 45 (fromIntegral x / fromIntegral y) 0.1 100.0
+  let projM = perspective 45 (fromIntegral x / fromIntegral y) 0.1 1000.0
   applyUniformM44 projM (_proj uniforms)
 
 applyViewMove :: Uniforms -> MovementRefs -> Camera -> GLfloat -> IO Camera
