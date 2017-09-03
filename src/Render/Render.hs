@@ -39,9 +39,10 @@ applyViewMove uniforms moveRef oldCamera lastTime = do
     return camera
 
 render :: Uniforms -> Entity -> IO ()
-render uniforms (Entity (VaoModel vaoID numVertices) pos rot scale) = do
+render uniforms (Entity (VaoModel vaoID numVertices) pos rot scale mode) = do
   let modelM = mkTransformation rot pos
   applyUniformM44 modelM (_model uniforms)
+  glPolygonMode GL_FRONT_AND_BACK mode
   glBindVertexArray vaoID
   -- vertices in attr 0
   glEnableVertexAttribArray 0
@@ -59,7 +60,7 @@ initDisplay window uniforms moveRef entities lights = do
   flip iterateM_ (0.0, initCamera) $ \(lastTime, oldCamera) -> do
     shouldTerminate window
     GLFW.pollEvents
-    glClearColor 0.2 0.3 0.3 1.0
+    glClearColor 0.0 0.0 0.0 1.0
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
     camera <- applyViewMove uniforms moveRef oldCamera lastTime
     t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat

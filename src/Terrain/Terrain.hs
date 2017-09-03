@@ -21,6 +21,9 @@ type Terrain = IOArray (Int, Int) Vertex
 mapScale :: GLfloat
 mapScale = 10.0
 
+mapShift :: GLfloat
+mapShift = (mapScale * fromIntegral maxSize) / 2
+
 triangleStrip :: GLuint -> GLuint -> [Face]
 triangleStrip len y = concat $ unfoldr build 0
   where
@@ -43,7 +46,7 @@ buildTerrain = do
   forM_ [0..maxSize] $ \y -> do
     forM_ [0..maxSize] $ \x -> do
       val <- readArray grid (x, y)
-      writeArray terrain (x, y) $ V3 ((fromIntegral x) * mapScale) val ((fromIntegral y) * mapScale)
+      writeArray terrain (x, y) $ V3 (((fromIntegral x) * mapScale) - mapShift) val (((fromIntegral y) * mapScale) - mapShift)
   return terrain
 
 terrainToObj :: Terrain -> IO Object
