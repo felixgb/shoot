@@ -21,6 +21,7 @@ data VaoModel = VaoModel
 --
 -- Each VAO has a unique ID, so you can reference it any time sing its ID.  You
 -- can use the id of a VAO to render an object
+
 loadToVao :: Object -> IO VaoModel
 loadToVao (Object vs _ vns is) = do
   indicesP <- newArray is

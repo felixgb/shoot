@@ -5,8 +5,8 @@ import Linear
 
 -- An axis aligned bounding box forms the two far corners of an object
 data AABB = AABB
-  { _aabbMin :: (GLfloat, GLfloat, GLfloat)
-  , _aabbMax :: (GLfloat, GLfloat, GLfloat)
+  { _aabbMin :: V3 GLfloat
+  , _aabbMax ::  V3 GLfloat
   } deriving (Show, Eq)
 
 insersectAABB :: AABB -> AABB -> Bool
@@ -15,10 +15,10 @@ insersectAABB (AABB aMin aMax) (AABB bMin bMax) =
   (aMinY <= bMaxY && aMaxY >= bMinY) &&
   (aMinZ <= bMaxZ && aMaxZ >= bMinZ)
   where
-    (aMinX, aMinY, aMinZ) = aMin
-    (bMinX, bMinY, bMinZ) = bMin
-    (aMaxX, aMaxY, aMaxZ) = aMax
-    (bMaxX, bMaxY, bMaxZ) = bMax
+    (V3 aMinX aMinY aMinZ) = aMin
+    (V3 bMinX bMinY bMinZ) = bMin
+    (V3 aMaxX aMaxY aMaxZ) = aMax
+    (V3 bMaxX bMaxY bMaxZ) = bMax
 
 --translateAABB :: V3 GLfloat -> AABB -> AABB
 
