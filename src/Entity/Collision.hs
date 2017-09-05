@@ -6,7 +6,7 @@ import Linear
 -- An axis aligned bounding box forms the two far corners of an object
 data AABB = AABB
   { _aabbMin :: V3 GLfloat
-  , _aabbMax ::  V3 GLfloat
+  , _aabbMax :: V3 GLfloat
   } deriving (Show, Eq)
 
 insersectAABB :: AABB -> AABB -> Bool
@@ -19,8 +19,6 @@ insersectAABB (AABB aMin aMax) (AABB bMin bMax) =
     (V3 bMinX bMinY bMinZ) = bMin
     (V3 aMaxX aMaxY aMaxZ) = aMax
     (V3 bMaxX bMaxY bMaxZ) = bMax
-
---translateAABB :: V3 GLfloat -> AABB -> AABB
 
 chunk :: Int -> [a] -> [V3 a]
 chunk _ [] = []

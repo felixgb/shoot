@@ -48,8 +48,8 @@ applyClick cam info ref = do
     True -> return [newBullet info (_pos cam) (_front cam)]
     False -> return []
 
-render :: Uniforms -> EntityInfo -> IO ()
-render uniforms (EntityInfo (VaoModel vaoID numVertices) pos rot scale mode) = do
+renderInfo :: Uniforms -> EntityInfo -> IO ()
+renderInfo uniforms (EntityInfo (VaoModel vaoID numVertices) pos rot scale mode) = do
   let modelM = (mkTransformation rot pos) !*! (scaleMatrix scale)
   applyUniformM44 modelM (_model uniforms)
   glPolygonMode GL_FRONT_AND_BACK mode
@@ -62,6 +62,13 @@ render uniforms (EntityInfo (VaoModel vaoID numVertices) pos rot scale mode) = d
   glDisableVertexAttribArray 0
   glDisableVertexAttribArray 1
   glBindVertexArray 0
+
+render :: Uniforms -> Entity -> IO ()
+render uniforms entity = case entity of
+  (Projectile _ i _) -> renderInfo uniforms i
+  (Terrain i)        -> renderInfo uniforms i
+  (Teappot _ i)      -> renderInfo uniforms i
+  (Player _)         -> return ()
 
 initDisplay :: GLFW.Window -> Uniforms -> MovementRefs -> ClickRef -> [Entity] -> [Light] -> IO ()
 initDisplay window uniforms moveRef clickRef entities lights = do
@@ -78,7 +85,8 @@ initDisplay window uniforms moveRef clickRef entities lights = do
     shootems <- applyClick camera bulletInfo clickRef
     let es' = shootems ++ es
     -- ... get the current entity and check collisions against all else
-    let es'' = map (transformEntity t shootems) es'
-    mapM_ (render uniforms . getInfo) es'
+    mapM_ (putStrLn . show) (collisions es')
+    let es'' = map (transformEntity t camera es') es'
+    mapM_ (render uniforms) es'
     GLFW.swapBuffers window
     return (t, camera, es'')
