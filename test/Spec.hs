@@ -21,20 +21,20 @@ main = hspec $ do
   describe "Entry Collision" $ do
     it "Gets the bounding box" $ do
       let shape = [1, 1, 1, -1, -1, -1, 60, 0, 2]
-      let expected = AABB (-1.0, -1.0, -1.0) (60.0, 1.0, 2.0)
+      let expected = AABB (V3 (-1.0) (-1.0) (-1.0)) (V3 60.0 1.0 2.0)
       createAABB shape `shouldBe` expected
 
     it "intercects two BBs (false)" $ do
-      let bb1 = AABB (0, 0, 0) (-1, -1, -1)
-      let bb2 = AABB (1, 1, 1) (2, 2, 2)
+      let bb1 = AABB (V3 0 0 0) (V3 (-1) (-1) (-1))
+      let bb2 = AABB (V3 1 1 1) (V3 2 2 2)
       (bb1 `insersectAABB` bb2) `shouldBe` False
 
     it "intercects two BBs (true)" $ do
-      let bb1 = AABB (-1, -1, -1) (3, 3, 3)
-      let bb2 = AABB (-3, -3, -3) (1, 1, 1)
+      let bb1 = AABB (V3 (-1) (-1) (-1)) (V3 3 3 3)
+      let bb2 = AABB (V3 (-3) (-3) (-3)) (V3 1 1 1)
       (bb1 `insersectAABB` bb2) `shouldBe` True
 
     it "intercects two BBs (true)" $ do
-      let bb1 = AABB (-1, -1, -1) (3, 3, 3)
-      let bb2 = AABB (-2, -2, -2) (-1, -1, -1)
+      let bb1 = AABB (V3 (-1) (-1) (-1)) (V3 3 3 3)
+      let bb2 = AABB (V3 (-2) (-2) (-2)) (V3 (-1) (-1) (-1))
       (bb1 `insersectAABB` bb2) `shouldBe` True
