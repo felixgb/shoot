@@ -1,7 +1,6 @@
 module Entity.Entity where
 
 import Data.Maybe (mapMaybe)
-import Debug.Trace
 
 import Graphics.GL.Core33
 import Linear hiding (rotate, trace)
@@ -56,7 +55,7 @@ getBB :: Entity -> Maybe AABB
 getBB (Projectile bb _ _) = return bb
 getBB (Terrain _)         = Nothing
 getBB (Teappot bb _)      = return bb
-getBB (Player bb)        = return bb
+getBB (Player bb)         = return bb
 
 transformEntity :: GLfloat -> Camera -> [Entity] -> Entity -> Entity
 transformEntity delta camera others entity = case entity of

@@ -5,6 +5,7 @@ import Data.IORef
 import Data.Maybe (fromMaybe)
 import Data.Fixed (mod')
 import Data.Set (Set)
+import Debug.Trace
 import qualified Data.Set as Set
 
 import qualified Graphics.UI.GLFW as GLFW
@@ -16,6 +17,7 @@ data Camera = Camera
   , _front :: V3 GLfloat
   , _up    :: V3 GLfloat
   , _accel :: GLfloat
+  , _roll  :: GLfloat
   }
 
 data MouseInfo = MouseInfo
@@ -39,7 +41,7 @@ initMouse :: MouseInfo
 initMouse = MouseInfo Nothing (0, (-90)) (V3 0 0 (-1))
 
 initCamera :: Camera
-initCamera = Camera (V3 0 0 3) (V3 0 0 (-1)) (V3 0 1 0) 0
+initCamera = Camera (V3 0 0 3) (V3 0 0 (-1)) (V3 0 0.5 0) 0 0
 
 initMovementRefs :: IO MovementRefs
 initMovementRefs = MovementRefs <$> newIORef initMouse <*> newIORef Set.empty
@@ -82,18 +84,17 @@ mouseFunc xPos yPos oldInfo = MouseInfo (Just (xPos, yPos)) (newPitch, newYaw) f
     front              = normalize $ V3 (cos yawR * cos pitchR) (sin pitchR) (sin yawR * cos pitchR)
 
 keyFunc :: GLfloat -> Camera -> Set GLFW.Key -> Camera
-keyFunc speed cam@(Camera pos front up accel) keyset = cam { _pos = pos ^+^ (speed *^ normalize moveVector), _accel = newAccel }
+keyFunc speed cam@(Camera pos front up accel roll) keyset = cam { _pos = pos ^+^ (speed *^ normalize moveVector), _accel = newAccel, _roll = newRoll }
   where
-    modCam key (vec, a) = case key of
-      GLFW.Key'W -> (vec ^+^ front, clamp (a + 0.02) (-0.2) (0.2))
-      GLFW.Key'S -> (vec ^-^ front, clamp (a - 0.02) (-0.2) (0.2))
-      GLFW.Key'Q -> (vec ^+^ up, a)
-      GLFW.Key'E -> (vec ^-^ up, a)
-      GLFW.Key'A -> (vec ^-^ normalize (cross front up), a)
-      GLFW.Key'D -> (vec ^+^ normalize (cross front up), a)
-      _ -> (vec, a)
-    (moveVector, newAccel) = Set.foldr modCam ((V3 0 0 0), accel) keyset
-
+    modCam key (vec, a, r) = case key of
+      GLFW.Key'W -> (vec ^+^ front, clamp (a + 0.02) (-0.5) (0.5), r)
+      GLFW.Key'S -> (vec ^-^ front, clamp (a - 0.02) (-0.5) (0.5), r)
+      GLFW.Key'Q -> (vec ^+^ up, a, r)
+      GLFW.Key'E -> (vec ^-^ up, a, r)
+      GLFW.Key'A -> (vec ^-^ normalize (cross front $ V3 0 1 0), a, clamp (r - 0.02) (-0.5) 0.5)
+      GLFW.Key'D -> (vec ^+^ normalize (cross front $ V3 0 1 0), a, clamp (r + 0.02) (-0.5) 0.5)
+      _ -> (vec, a, r)
+    (moveVector, newAccel, newRoll) = Set.foldr modCam ((V3 0 0 0), accel, roll) keyset
 
 clamp :: GLfloat -> GLfloat -> GLfloat -> GLfloat
 clamp x lower upper
@@ -102,7 +103,10 @@ clamp x lower upper
   | otherwise = x
 
 toViewMatrix :: Camera -> M44 GLfloat
-toViewMatrix (Camera pos front up accel) = lookAt pos (pos ^+^ front) up
+toViewMatrix (Camera pos front up _ _) = lookAt pos (pos ^+^ front) up
+
+sign :: GLfloat -> GLfloat
+sign x = if x > 0 then 1 else -1
 
 toZero :: GLfloat -> GLfloat
 toZero n
@@ -110,17 +114,19 @@ toZero n
   | n < -0.001  = n + 0.02
   | otherwise = n
 
+smoothstep :: GLfloat -> GLfloat -> GLfloat -> GLfloat
 smoothstep e0 e1 x = x' * x' * (3 - 2 * x')
   where x' = clamp ((x - e0) / (e1 - e0)) 0.0 1.0
 
 updateCamera :: Set GLFW.Key -> MouseInfo -> Camera -> GLfloat -> GLfloat -> Camera
 updateCamera keys mouse oldCamera elapsedTime currentTime = cameraTemp
-  { _front = _frontVec mouse + V3 0 (-(accel)) 0
-  , _accel = accel
+  { _front = _frontVec mouse
   }
   where
-    deltaTime   = currentTime - elapsedTime
-    cameraSpeed = deltaTime * 20 + (2 * (abs $ _accel oldCamera))
-    cameraTemp  = keyFunc cameraSpeed oldCamera keys
-    smooth x = (smoothstep 0 0.3 x) * 0.3
-    accel = if keys /= Set.empty then _accel cameraTemp else (toZero $ _accel cameraTemp)
+    deltaTime    = currentTime - elapsedTime
+    cameraSpeed  = deltaTime * 20
+    cameraTemp   = keyFunc cameraSpeed oldCamera keys
+    accel        = if keys /= Set.empty then _accel cameraTemp else (toZero $ _accel cameraTemp)
+    smoothedRoll = (smoothstep 0 0.5 (abs $ _roll cameraTemp)) * 0.3 * sign (_roll cameraTemp)
+    rollV        = V3 smoothedRoll 1 0
+    roll         = if keys /= Set.empty then traceShow (_roll cameraTemp, _front cameraTemp) (_roll cameraTemp) else (toZero $ _roll cameraTemp)

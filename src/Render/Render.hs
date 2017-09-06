@@ -80,10 +80,10 @@ initDisplay window uniforms moveRef clickRef entities lights = do
     GLFW.pollEvents
     glClearColor 0.0 0.0 0.0 1.0
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
-    camera <- applyViewMove uniforms moveRef oldCamera lastTime
-    t <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
+    camera   <- applyViewMove uniforms moveRef oldCamera lastTime
+    t        <- (maybe 0 realToFrac <$> GLFW.getTime) :: IO GLfloat
     shootems <- applyClick camera bulletInfo clickRef
-    let es' = shootems ++ es
+    let es'  = shootems ++ es
     -- ... get the current entity and check collisions against all else
     mapM_ (putStrLn . show) (collisions es')
     let es'' = map (transformEntity t camera es') es'

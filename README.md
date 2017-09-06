@@ -2,30 +2,31 @@
 
 stuff to do:
 
-# collision
+## collision
 - (DONE) fix bb to use Vector
 - (NOT NEEDED) set of entities instead of list
 - (DONE) collision class between two entities
 - health for entities?
 - terrain hight map for collisions
 
-# shoot
+## shoot
 - limit ROF
 
-# movement
+## movement
 - smooth accelerate / decelerate 
 - roll on strafe
 
-# refactor
+## refactor
 - entities instance `Entity` class
 - projectile, terrain, teapot instance `Renderable` class
+- import Collision into Entity or the other way around?
 
-# other
+## other
 - more models...?
 - learn blender
 - use geometry shader to output face normal to fragment shader (low poly?)
 
-# explode objects on collision
+## explode objects on collision
 
 ```
 for each face:

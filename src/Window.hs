@@ -17,7 +17,7 @@ winHeight :: Int
 winHeight = 1080
 
 winTitle :: String
-winTitle = "HELL YEAH"
+winTitle = "teapot 3"
 
 shouldTerminate :: GLFW.Window -> IO ()
 shouldTerminate window = do
