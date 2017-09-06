@@ -36,7 +36,7 @@ applyViewMove uniforms moveRef oldCamera lastTime = do
     mouse <- readIORef (_mouseRef moveRef)
     keys  <- readIORef (_keysRef moveRef)
     let camera = updateCamera keys mouse oldCamera lastTime t
-    let viewM  = toViewMatrix camera
+    let viewM  = toViewMatrix t
     applyUniformM44 viewM (_view uniforms)
     return camera
 
@@ -45,7 +45,7 @@ applyClick cam info ref = do
   buttons <- readIORef ref
   -- check dif lasttime current time is above some thresh to limit ROF
   case GLFW.MouseButton'1 `Set.member` buttons of
-    True -> return [newBullet info (_pos cam) (_front cam)]
+    True -> return [newBullet info (_pos cam) (V3 0 0 0)]
     False -> return []
 
 renderInfo :: Uniforms -> EntityInfo -> IO ()

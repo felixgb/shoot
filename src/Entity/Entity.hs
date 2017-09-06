@@ -48,7 +48,7 @@ instance Transformable Entity where
 
   rotate amount dir entity = case entity of
     (Terrain _)                -> entity
-    (Teappot bb info)          -> Teappot (rotate amount dir bb) (rotate amount dir info)
+    (Teappot bb info)          -> entity
     (Projectile bb info front) -> Projectile (rotate amount dir bb) (rotate amount dir info) front
 
 getBB :: Entity -> Maybe AABB
