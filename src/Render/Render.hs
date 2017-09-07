@@ -36,7 +36,7 @@ applyViewMove uniforms moveRef oldCamera lastTime = do
     mouse <- readIORef (_mouseRef moveRef)
     keys  <- readIORef (_keysRef moveRef)
     let camera = updateCamera keys mouse oldCamera lastTime t
-    let viewM  = toViewMatrix t
+    let viewM  = toViewMatrix camera
     applyUniformM44 viewM (_view uniforms)
     return camera
 

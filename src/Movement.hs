@@ -37,7 +37,7 @@ data MovementRefs = MovementRefs
 type ClickRef = IORef (Set GLFW.MouseButton)
 
 initMouse :: MouseInfo
-initMouse = MouseInfo Nothing (0, (-90)) (0, 0)
+initMouse = MouseInfo Nothing (0, 0) (0, 0)
 
 initCamera :: Camera
 initCamera = Camera (V3 0 0 3) 0 0 0
@@ -51,9 +51,9 @@ initClickRef = newIORef Set.empty
 keyCallback :: KeysRef -> GLFW.KeyCallback
 keyCallback ref window key _ keyState _ = do
     case keyState of
-      GLFW.KeyState'Pressed -> modifyIORef ref (Set.insert key)
+      GLFW.KeyState'Pressed  -> modifyIORef ref (Set.insert key)
       GLFW.KeyState'Released -> modifyIORef ref (Set.delete key)
-      _ -> return ()
+      _                      -> return ()
     when (key == GLFW.Key'Escape && keyState == GLFW.KeyState'Pressed)
         (GLFW.setWindowShouldClose window True)
 
@@ -63,12 +63,11 @@ mouseCallback ref _ xPos yPos = modifyIORef ref $ \info -> (mouseFunc xPos yPos 
 clickCallback :: ClickRef -> GLFW.MouseButtonCallback
 clickCallback ref window button action mods = do
   case action of
-    GLFW.MouseButtonState'Pressed -> modifyIORef ref (Set.insert button)
+    GLFW.MouseButtonState'Pressed  -> modifyIORef ref (Set.insert button)
     GLFW.MouseButtonState'Released -> modifyIORef ref (Set.delete button)
-    _ -> return ()
 
 mouseFunc :: Double -> Double -> MouseInfo -> MouseInfo
-mouseFunc xPos yPos oldInfo = MouseInfo (Just (xPos, yPos)) (newPitch, newYaw) (pitchR, yawR)
+mouseFunc xPos yPos oldInfo = MouseInfo (Just (xPos, yPos)) (newPitch, newYaw) (-pitchR, yawR)
   where
     (lastX, lastY)     = fromMaybe (xPos, yPos) (_lastXY oldInfo)
     sensitivity        = 0.5
@@ -82,18 +81,20 @@ mouseFunc xPos yPos oldInfo = MouseInfo (Just (xPos, yPos)) (newPitch, newYaw) (
     yawR               = toRadians newYaw
 
 keyFunc :: GLfloat -> Camera -> Set GLFW.Key -> Camera
-keyFunc speed cam keyset = cam
-  -- where
-
-  --   modCam key vec = case key of
-  --     GLFW.Key'W -> vec ^+^ (V3 0 0 1)
-  --     GLFW.Key'S -> vec ^-^ (V3 0 0 1)
-  --     GLFW.Key'Q -> vec ^+^ (V3 0 
-  --     GLFW.Key'E -> vec ^-^ up, a, r)
-  --     GLFW.Key'A -> vec ^-^ normalize (cross front $ V3 0 1 0), a, clamp (r - 0.02) (-0.5) 0.5)
-  --     GLFW.Key'D -> vec ^+^ normalize (cross front $ V3 0 1 0), a, clamp (r + 0.02) (-0.5) 0.5)
-  --     _ -> (vec, a, r)
-  --   (moveVector, newAccel, newRoll) = Set.foldr modCam ((V3 0 0 0), accel, roll) keyset
+keyFunc speed cam@(Camera pos pitch yaw roll) keyset = cam { _pos = newPos, _roll = newRoll }
+  where
+    dx = sin yaw
+    dz = cos yaw
+    dy = sin pitch
+    modCam key (vec, r) = case key of
+      GLFW.Key'W -> (vec ^+^ (V3 (-dx) dy dz), r)
+      GLFW.Key'S -> (vec ^+^ (V3 dx (-dy) (-dz)), r)
+      GLFW.Key'A -> (vec ^+^ (V3 dz 0 dx), r)
+      GLFW.Key'D -> (vec ^-^ (V3 dz 0 dx), r)
+      GLFW.Key'Q -> (vec, r - 0.1)
+      GLFW.Key'E -> (vec, r + 0.1)
+      _ -> (vec, r)
+    (newPos, newRoll) = Set.foldr modCam (pos, roll) keyset
 
 clamp :: GLfloat -> GLfloat -> GLfloat -> GLfloat
 clamp x lower upper
@@ -101,8 +102,34 @@ clamp x lower upper
   | x > upper = upper
   | otherwise = x
 
---toViewMatrix :: Camera -> M44 GLfloat
-toViewMatrix t =  (m33_to_m44 (fromQuaternion (axisAngle (V3 0 0 1) t))) !*! (m33_to_m44 (fromQuaternion (axisAngle (V3 0 1 0) t)))!*! (transMatrix (V3 0 0 (-10)))
+toViewMatrix :: Camera -> M44 GLfloat
+toViewMatrix (Camera pos pitch yaw roll) = rollM !*! pitchM !*! yawM !*! posM
+  where
+    posM   = transMatrix pos
+    yawM   = rotYM yaw
+    pitchM = rotXM pitch
+    rollM  = rotZM roll
+
+rotXM :: GLfloat -> M44 GLfloat
+rotXM d = V4
+  (V4 1 0       0          0)
+  (V4 0 (cos d) (-(sin d)) 0)
+  (V4 0 (sin d) (cos d)    0)
+  (V4 0 0       0          1)
+
+rotYM :: GLfloat -> M44 GLfloat
+rotYM d = V4
+  (V4 (cos d)    0 (sin d) 0)
+  (V4 0          1 0       0)
+  (V4 (-(sin d)) 0 (cos d) 0)
+  (V4 0          0 0       1)
+
+rotZM :: GLfloat -> M44 GLfloat
+rotZM d = V4
+  (V4 (cos d) (-(sin d)) 0 0)
+  (V4 (sin d) (cos d)    0 0)
+  (V4 0       0          1 0)
+  (V4 0       0          0 1)
 
 transMatrix :: V3 GLfloat -> M44 GLfloat
 transMatrix (V3 x y z) = V4
@@ -125,14 +152,11 @@ smoothstep e0 e1 x = x' * x' * (3 - 2 * x')
   where x' = clamp ((x - e0) / (e1 - e0)) 0.0 1.0
 
 updateCamera :: Set GLFW.Key -> MouseInfo -> Camera -> GLfloat -> GLfloat -> Camera
-updateCamera keys mouse oldCamera elapsedTime currentTime = oldCamera
-  -- { _front = _frontVec mouse
-  -- }
-  -- where
-  --   deltaTime    = currentTime - elapsedTime
-  --   cameraSpeed  = deltaTime * 20
-  --   cameraTemp   = keyFunc cameraSpeed oldCamera keys
-  --   accel        = if keys /= Set.empty then _accel cameraTemp else (toZero $ _accel cameraTemp)
-  --   smoothedRoll = (smoothstep 0 0.5 (abs $ _roll cameraTemp)) * 0.3 * sign (_roll cameraTemp)
-  --   rollV        = V3 smoothedRoll 1 0
-  --   roll         = if keys /= Set.empty then traceShow (_roll cameraTemp, _front cameraTemp) (_roll cameraTemp) else (toZero $ _roll cameraTemp)
+updateCamera keys mouse oldCamera elapsedTime currentTime = cameraTemp
+  { _pitch = fst $ _pitchYaw mouse
+  , _yaw = snd $ _pitchYaw mouse
+  }
+  where
+    deltaTime    = currentTime - elapsedTime
+    cameraSpeed  = deltaTime * 20
+    cameraTemp   = keyFunc cameraSpeed oldCamera keys
